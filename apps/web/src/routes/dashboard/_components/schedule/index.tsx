@@ -1,5 +1,6 @@
 import type { DeviceId } from '@rozumari/contract/device/schemas/device.schema'
 
+import { getCurrentWeekRange } from '@rozumari/lib/get-current-week-range'
 import { Button } from '@rozumari/ui/components/button'
 import {
   EmptyHeader,
@@ -15,7 +16,6 @@ import { parseAsString, useQueryStates } from 'nuqs'
 import { Link } from 'react-router'
 
 import { api } from '@/lib/runtime'
-import { getCurrentWeekRange } from '@/lib/utils'
 import { ScheduleGrid } from '@/routes/dashboard/_components/schedule/schedule-grid'
 import { ScheduleList } from '@/routes/dashboard/_components/schedule/schedule-list'
 import { ScheduleNav } from '@/routes/dashboard/_components/schedule/schedule-nav'

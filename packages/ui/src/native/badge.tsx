@@ -36,7 +36,7 @@ function Badge({
       <View
         data-slot='badge'
         data-variant={variant}
-        className={cn(badgeVariants({ variant }), className)}
+        className={cn(badgeVariants({ variant }), 'h-6 flex-row', className)}
         {...props}
       />
     </TypographyContext>

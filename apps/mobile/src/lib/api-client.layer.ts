@@ -13,6 +13,7 @@ const AuthMiddlewareClient = HttpApiMiddleware.layerClient(
   Effect.fn(function* AuthMiddlewareClient({ next, request }) {
     const { accessToken } = yield* Effect.promise(getTokens)
     if (!accessToken) return yield* next(request)
+
     return yield* next(HttpClientRequest.bearerToken(request, accessToken))
   })
 )

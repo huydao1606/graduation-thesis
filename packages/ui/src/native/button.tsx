@@ -39,8 +39,8 @@ function Button({
       <Pressable
         data-slot='button'
         className={cn(
-          'active:opacity-80',
-          buttonVariants({ variant, size, className })
+          buttonVariants({ variant, size, className }),
+          'flex-row active:opacity-80'
         )}
         {...props}
       >

@@ -3,13 +3,14 @@ import { Typography } from '@rozumari/ui/components/typography'
 import * as Linking from 'expo-linking'
 import { useRouter } from 'expo-router'
 import * as WebBrowser from 'expo-web-browser'
+import { ToastAndroid } from 'react-native'
 
 import { setTokens } from '@/lib/secure-store'
 import { getBaseUrl } from '@/lib/utils'
 
 WebBrowser.maybeCompleteAuthSession()
 
-export function OAuthButton({ provider }: { provider: 'google' | 'facebook' }) {
+export function OAuthButton({ provider }: { provider: string }) {
   const router = useRouter()
 
   const handleLogin = async () => {
@@ -28,10 +29,10 @@ export function OAuthButton({ provider }: { provider: 'google' | 'facebook' }) {
         if (accessToken && refreshToken)
           await setTokens(accessToken, refreshToken)
 
-        router.navigate('/(tabs)')
+        router.navigate('/(tabs)/home')
       }
-    } catch (error) {
-      console.error('OAuth error:', error)
+    } catch {
+      ToastAndroid.show('Login failed. Please try again.', ToastAndroid.SHORT)
     }
   }
 

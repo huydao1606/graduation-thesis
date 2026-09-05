@@ -12,8 +12,8 @@ import { parseAsInteger, parseAsString, useQueryStates } from 'nuqs'
 import { Link } from 'react-router'
 
 import { DataTable } from '@/components/data-table'
+import { useSession } from '@/hooks/use-session'
 import { api } from '@/lib/runtime'
-import { useSession } from '@/lib/use-session'
 import { AddDeviceButton } from '@/routes/dashboard/pill-boxes/_components/add-device-button'
 import { LinkDeviceButton } from '@/routes/dashboard/pill-boxes/_components/link-device-button'
 

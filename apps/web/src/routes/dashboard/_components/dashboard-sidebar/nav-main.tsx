@@ -7,7 +7,7 @@ import { useMemo } from 'react'
 
 import type { NavGroupConfig } from '@/routes/dashboard/_components/dashboard-sidebar/config'
 
-import { useSession } from '@/lib/use-session'
+import { useSession } from '@/hooks/use-session'
 import {
   NavCollapsibleItem,
   NavSingleItem,

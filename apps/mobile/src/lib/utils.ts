@@ -1,4 +1,5 @@
 import Constants from 'expo-constants'
+import { Alert, Platform, ToastAndroid } from 'react-native'
 
 /**
  * Extend this function when going to production by
@@ -23,4 +24,29 @@ export const getBaseUrl = () => {
   throw new Error(
     'Could not determine the base URL. Please set the EXPO_PUBLIC_API_URL environment variable.'
   )
+}
+
+type ToastDuration = 'short' | 'long'
+type AlertLevel = 'success' | 'error' | 'info' | 'warning'
+
+/**
+ * Show a toast notification on Android or an alert on iOS.
+ * @param message The message to show in the toast or alert.
+ * @param option Duration for Android ('short' | 'long') or Title level for iOS ('Error' | 'Info' | 'Warning').
+ */
+export function showToast(
+  message: string,
+  option?: ToastDuration | AlertLevel
+): void {
+  if (Platform.OS === 'ios') {
+    const duration = option === 'long' ? ToastAndroid.LONG : ToastAndroid.SHORT
+    ToastAndroid.show(message, duration)
+  } else {
+    const isDuration = option === 'short' || option === 'long'
+
+    let title = isDuration || !option ? 'notification' : option
+    title = title.charAt(0).toUpperCase() + title.slice(1)
+
+    Alert.alert(title, message)
+  }
 }

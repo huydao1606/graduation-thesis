@@ -1,6 +1,6 @@
 import type { GestureResponderEvent } from 'react-native'
 
-import { CheckIcon } from 'lucide-react-native'
+import { CheckIcon } from 'lucide-uniwind'
 import * as React from 'react'
 import { Pressable, View } from 'react-native'
 
@@ -62,7 +62,7 @@ function Checkbox({
           data-slot='checkbox-indicator'
           className='items-center justify-center'
         >
-          <CheckIcon size={14} color='#FAFAFA' />
+          <CheckIcon className='size-4 text-primary-foreground' />
         </View>
       )}
     </Pressable>

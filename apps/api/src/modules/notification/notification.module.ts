@@ -4,6 +4,7 @@ import type { AppModule } from '@/modules/app.module'
 import type { DeviceService } from '@/modules/device/application/ports/device.service'
 import type { StreamService } from '@/shared/application/services/stream.service'
 
+import { CountUnreadNotificationsUseCase } from '@/modules/notification/application/use-case/count-unread-notifications'
 import { CreateNotificationUseCase } from '@/modules/notification/application/use-case/create-notification.use-case'
 import { ListNotificationsUseCase } from '@/modules/notification/application/use-case/list-notifications.use-case'
 import { ShowNotificationUseCase } from '@/modules/notification/application/use-case/show-notification.use-case'
@@ -21,6 +22,7 @@ export class NotificationModule {
     ).pipe(Layer.merge(imports))
 
     const useCaseLayer = Layer.mergeAll(
+      CountUnreadNotificationsUseCase.layer,
       ListNotificationsUseCase.layer,
       ShowNotificationUseCase.layer,
       CreateNotificationUseCase.layer

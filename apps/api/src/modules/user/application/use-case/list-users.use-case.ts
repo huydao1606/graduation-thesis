@@ -38,9 +38,9 @@ export class ListUsersUseCase extends Context.Service<
           [
             userRepository.findMany({
               where,
-              orderBy: { createdAt: 'desc' },
               limit,
               offset,
+              orderBy: { createdAt: 'desc' },
             }),
             userRepository.count(where),
           ],

@@ -33,7 +33,12 @@ export class ListNotificationsUseCase extends Context.Service<
 
         const [notifications, total] = yield* Effect.all(
           [
-            notificationRepository.findMany({ where, limit, offset }),
+            notificationRepository.findMany({
+              where,
+              limit,
+              offset,
+              orderBy: { createdAt: 'desc' },
+            }),
             notificationRepository.count(where),
           ],
           { concurrency: 'unbounded' }

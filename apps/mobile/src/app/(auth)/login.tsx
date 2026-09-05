@@ -11,14 +11,14 @@ import {
   FieldSet,
 } from '@rozumari/ui/components/field'
 import { Input } from '@rozumari/ui/components/input'
+import { toast } from '@rozumari/ui/components/toast'
 import { FormBuilder } from '@rozumari/ui/lib/form-builder'
+import { useQueryClient } from '@tanstack/react-query'
 import { useRouter } from 'expo-router'
-import { useLayoutEffect } from 'react'
 import { View } from 'react-native'
 
-import { OAuthButton } from '@/components/oauth-button'
+import { OAuthButton } from '@/components/auth/oauth-button'
 import { useRuntime } from '@/hooks/use-runtime'
-import { useSession } from '@/hooks/use-session'
 import { setTokens } from '@/lib/secure-store'
 
 const loginForm = FormBuilder.empty
@@ -27,13 +27,9 @@ const loginForm = FormBuilder.empty
   .make()
 
 export default function LoginScreen() {
+  const queryClient = useQueryClient()
   const router = useRouter()
   const { api } = useRuntime()
-
-  const { status } = useSession()
-  useLayoutEffect(() => {
-    if (status === 'authenticated') router.navigate('/(tabs)')
-  }, [status, router])
 
   return (
     <View className='flex-1 items-center justify-center gap-4 px-4'>
@@ -88,9 +84,15 @@ export default function LoginScreen() {
                       {
                         onSuccess: async ({ data }) => {
                           await setTokens(data.accessToken, data.refreshToken)
-                          router.navigate('/(tabs)')
+                          await queryClient.invalidateQueries({
+                            queryKey: api.auth.whoami.getQueryKey(),
+                          })
+
+                          toast.success('Login successful')
+                          router.navigate('/(tabs)/home')
                         },
-                        onError: (error) => console.log('Login failed', error),
+                        onError: (error) =>
+                          toast.error('Login failed', error.message),
                       }
                     )
                   }
@@ -102,12 +104,13 @@ export default function LoginScreen() {
           />
 
           <FieldSeparator>
-            <FieldLabel>Or</FieldLabel>
+            <FieldLabel>or</FieldLabel>
           </FieldSeparator>
 
           <Field orientation='horizontal'>
-            <OAuthButton provider='facebook' />
-            <OAuthButton provider='google' />
+            {['facebook', 'google'].map((provider) => (
+              <OAuthButton key={provider} provider={provider} />
+            ))}
           </Field>
         </FieldGroup>
       </loginForm.Root>

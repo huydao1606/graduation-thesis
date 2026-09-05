@@ -1,7 +1,5 @@
-import type { ImageProps as RNImageProps } from 'react-native'
-
 import * as React from 'react'
-import { Image as RNImage, View } from 'react-native'
+import { Image, View } from 'react-native'
 
 import { cn } from '@/lib/utils'
 import { Typography } from '@/native/typography'
@@ -45,16 +43,13 @@ function Avatar({
   )
 }
 
-// -----------------------------------------------------------------------------
-// Avatar Image
-// -----------------------------------------------------------------------------
 function AvatarImage({
   className,
   source,
   onLoad,
   onError,
   ...props
-}: RNImageProps) {
+}: React.ComponentProps<typeof Image>) {
   const ctx = React.use(AvatarContext)
   if (!ctx)
     throw new Error('AvatarImage must be used within an Avatar component')
@@ -63,7 +58,7 @@ function AvatarImage({
   if (!source || hasError) return null
 
   return (
-    <RNImage
+    <Image
       data-slot='avatar-image'
       source={source}
       onLoad={(e) => {
@@ -80,9 +75,6 @@ function AvatarImage({
   )
 }
 
-// -----------------------------------------------------------------------------
-// Avatar Fallback
-// -----------------------------------------------------------------------------
 function AvatarFallback({
   className,
   children,

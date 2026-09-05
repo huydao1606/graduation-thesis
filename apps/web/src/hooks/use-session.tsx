@@ -2,18 +2,29 @@ import type { UserSchema } from '@rozumari/contract/user/schemas/user.schema'
 
 import { toast } from '@rozumari/ui/components/toast'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import { useMemo } from 'react'
+import * as React from 'react'
 import { useNavigate } from 'react-router'
 
 import { api } from '@/lib/runtime'
 
-type UseSessionReturn = (
+type SessionContextValue = (
   | { status: 'loading'; user: UserSchema | null }
   | { status: 'authenticated'; user: UserSchema }
   | { status: 'unauthenticated'; user: null }
 ) & { logout: () => void; refetch: () => Promise<void> }
 
-export const useSession = () => {
+const SessionContext = React.createContext<SessionContextValue | null>(null)
+
+const useSession = () => {
+  const context = React.use(SessionContext)
+  if (!context)
+    throw new Error('useSession must be used within a SessionProvider')
+  return context
+}
+
+function SessionProvider({
+  children,
+}: Readonly<{ children: React.ReactNode }>) {
   const queryClient = useQueryClient()
   const navigate = useNavigate()
 
@@ -38,10 +49,15 @@ export const useSession = () => {
       }),
   })
 
-  return useMemo(() => {
-    if (isLoading) return { status: 'loading', user: null, logout, refetch }
+  const memoizedValue = React.useMemo(() => {
+    const base = { logout, refetch }
+    if (isLoading) return { ...base, status: 'loading', user: null } as never
     if (data?.data)
-      return { status: 'authenticated', user: data.data, logout, refetch }
-    return { status: 'unauthenticated', user: null, logout, refetch }
-  }, [isLoading, data, logout, refetch]) as unknown as UseSessionReturn
+      return { ...base, status: 'authenticated', user: data.data } as never
+    return { ...base, status: 'unauthenticated', user: null } as never
+  }, [isLoading, data, logout, refetch])
+
+  return <SessionContext value={memoizedValue}>{children}</SessionContext>
 }
+
+export { SessionProvider, useSession }

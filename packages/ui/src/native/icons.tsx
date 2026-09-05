@@ -1,2 +1,2 @@
 // oxlint-disable-next-line oxc/no-barrel-file
-export * from 'lucide-react-native'
+export * from 'lucide-uniwind'
