@@ -1,3 +1,9 @@
+## @rozumari/mobile@0.0.6
+
+### Bug Fixes
+
+- Infinite loop in the root
+
 ## @rozumari/mobile@0.0.5
 
 ### Bug Fixes
