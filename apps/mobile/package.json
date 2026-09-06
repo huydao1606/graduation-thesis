@@ -33,7 +33,7 @@
     "expo-web-browser": "^57.0.2",
     "react": "catalog:react",
     "react-native": "catalog:react",
-    "react-native-ble-plx": "^3.5.1",
+    "react-native-ble-manager": "^12.5.1",
     "react-native-safe-area-context": "~5.7.0",
     "react-native-svg": "15.15.4"
   },

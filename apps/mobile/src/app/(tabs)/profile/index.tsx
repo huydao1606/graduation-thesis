@@ -46,7 +46,7 @@ export default function TabsProfileIndexScreen() {
     {
       icon: Calendar1Icon,
       title: 'Joined At',
-      description: new Date(user.createdAt).toLocaleDateString('vi-VN', {
+      description: new Date(user.createdAt).toLocaleDateString('en-US', {
         year: 'numeric',
         month: 'long',
         day: 'numeric',
@@ -71,7 +71,11 @@ export default function TabsProfileIndexScreen() {
           </AvatarFallback>
 
           <Badge className='absolute -right-1/4 -bottom-1'>
-            <ShieldIcon className='size-3 text-primary-foreground' />
+            {user.role === 'admin' ? (
+              <ShieldIcon className='size-3 text-primary-foreground' />
+            ) : (
+              <UserIcon className='size-3 text-primary-foreground' />
+            )}
             <Typography className='pr-px uppercase'>{user.role}</Typography>
           </Badge>
         </Avatar>

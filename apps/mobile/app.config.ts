@@ -31,6 +31,13 @@ export default ({ config }: ConfigContext): ExpoConfig => ({
       backgroundColor: '#DBE4FF',
       monochromeImage: './assets/adaptive-icon-monochrome.png',
     },
+    permissions: [
+      'android.permission.BLUETOOTH',
+      'android.permission.BLUETOOTH_ADMIN',
+      'android.permission.BLUETOOTH_CONNECT',
+      'android.permission.BLUETOOTH_SCAN',
+      'android.permission.ACCESS_FINE_LOCATION',
+    ],
   },
 
   ios: {
@@ -66,15 +73,7 @@ export default ({ config }: ConfigContext): ExpoConfig => ({
       },
     ],
     'expo-system-ui',
-    [
-      'react-native-ble-plx',
-      {
-        isBackgroundEnabled: true,
-        modes: ['peripheral', 'central'],
-        bluetoothAlwaysPermission:
-          'Allow $(PRODUCT_NAME) to connect to bluetooth devices',
-      },
-    ],
+    'react-native-ble-manager',
   ],
 
   experiments: {
