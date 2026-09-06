@@ -2,8 +2,6 @@
 
 ### Feature Additions & Mobile Navigation Restructuring
 
-
-
 ### `@rozumari/api`
 
 - Added endpoint for fetching unread notifications count.
