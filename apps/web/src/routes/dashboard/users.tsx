@@ -10,8 +10,8 @@ import { useQuery } from '@tanstack/react-query'
 import { parseAsInteger, parseAsString, useQueryStates } from 'nuqs'
 
 import { DataTable } from '@/components/data-table'
+import { useSession } from '@/hooks/use-session'
 import { api } from '@/lib/runtime'
-import { useSession } from '@/lib/use-session'
 import { DeleteUserDialog } from '@/routes/dashboard/_components/delete-user-dialog'
 import { EditUserDialog } from '@/routes/dashboard/_components/edit-user-dialog'
 

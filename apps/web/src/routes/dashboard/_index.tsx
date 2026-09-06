@@ -1,7 +1,7 @@
 import { UserRole } from '@rozumari/contract/user/schemas/user.schema'
 import { Typography } from '@rozumari/ui/components/typography'
 
-import { useSession } from '@/lib/use-session'
+import { useSession } from '@/hooks/use-session'
 import { AdminDashboard } from '@/routes/dashboard/_components/dashboard/admin'
 import { UserDashboard } from '@/routes/dashboard/_components/dashboard/user'
 

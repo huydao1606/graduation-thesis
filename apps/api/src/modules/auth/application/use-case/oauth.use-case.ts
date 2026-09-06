@@ -75,11 +75,17 @@ export class OAuthUseCase extends Context.Service<
             userId: UserId,
             userRole: UserRole
 
-          if (account) {
+          if (account && user) {
+            if (user.deletedAt !== null)
+              return yield* Effect.fail(
+                new ProviderError({ message: 'User account is deleted' })
+              )
+
             ;({ userId } = account)
             userRole = user?.role ?? UserRole.make('user')
           } else {
             if (user) {
+              yield* Effect.log(`User found: ${user}`)
               if (user.deletedAt !== null)
                 return yield* Effect.fail(
                   new ProviderError({ message: 'User account is deleted' })

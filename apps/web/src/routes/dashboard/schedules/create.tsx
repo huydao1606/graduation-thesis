@@ -23,8 +23,8 @@ import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { useMemo } from 'react'
 import { useNavigate, useSearchParams } from 'react-router'
 
+import { useSession } from '@/hooks/use-session'
 import { api } from '@/lib/runtime'
-import { useSession } from '@/lib/use-session'
 import {
   CreateScheduleForm,
   DAYS_OF_WEEK,

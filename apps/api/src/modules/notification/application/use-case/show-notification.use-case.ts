@@ -39,8 +39,10 @@ export class ShowNotificationUseCase extends Context.Service<
         if (!notification)
           return yield* Effect.fail(new NotificationNotFound({ error: { id } }))
 
-        const readedNotification = notification.markAsRead()
-        yield* notificationRepository.save(readedNotification)
+        if (userId === notification.userId && !notification.readAt) {
+          const readedNotification = notification.markAsRead()
+          yield* notificationRepository.save(readedNotification)
+        }
 
         return notification
       }),

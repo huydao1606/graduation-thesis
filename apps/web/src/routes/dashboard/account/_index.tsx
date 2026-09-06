@@ -23,7 +23,7 @@ import { toast } from '@rozumari/ui/components/toast'
 import { Typography } from '@rozumari/ui/components/typography'
 import { useRef, useState } from 'react'
 
-import { useSession } from '@/lib/use-session'
+import { useSession } from '@/hooks/use-session'
 
 export default function AccountPage() {
   const { user, status } = useSession()

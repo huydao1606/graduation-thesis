@@ -1,16 +1,23 @@
 import { Card } from '@rozumari/ui/components/card'
 import { Loader2Icon } from '@rozumari/ui/components/icons'
-import { useLayoutEffect } from 'react'
+import { useIsomorphicLayoutEffect } from '@rozumari/ui/hooks/use-isomorphic-layout-effect'
 import { Outlet, useNavigate } from 'react-router'
 
-import { useSession } from '@/lib/use-session'
+import { useSession } from '@/hooks/use-session'
 
 export default function AuthRoot() {
   const { status } = useSession()
   const navigate = useNavigate()
 
-  useLayoutEffect(() => {
-    if (status === 'authenticated') navigate('/dashboard', { replace: true })
+  useIsomorphicLayoutEffect(() => {
+    let isMounted = true
+
+    if (status === 'authenticated' && isMounted)
+      navigate('/dashboard', { replace: true })
+
+    return () => {
+      isMounted = false
+    }
   }, [navigate, status])
 
   if (status === 'loading')

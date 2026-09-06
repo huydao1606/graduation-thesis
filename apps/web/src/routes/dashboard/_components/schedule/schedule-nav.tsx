@@ -1,19 +1,25 @@
+import { getCurrentWeekRange } from '@rozumari/lib/get-current-week-range'
 import { Button } from '@rozumari/ui/components/button'
 import { ButtonGroup } from '@rozumari/ui/components/button-group'
 import {
   ChevronLeftIcon,
   ChevronRightIcon,
 } from '@rozumari/ui/components/icons'
+import { cn } from '@rozumari/ui/lib/utils'
 import { useMemo } from 'react'
 import { Link } from 'react-router'
-
-import { getCurrentWeekRange } from '@/lib/utils'
 
 const getAdjacentWeekRange = (currentStartDate: string, offsetDays: number) => {
   const date = new Date(currentStartDate)
   date.setDate(date.getDate() + offsetDays)
   return getCurrentWeekRange(date)
 }
+
+const STATUSES = [
+  { label: 'Completed', color: 'bg-success' },
+  { label: 'Pending', color: 'bg-warning' },
+  { label: 'Missed', color: 'bg-destructive' },
+]
 
 export const ScheduleNav: React.FC<{
   startDate: string
@@ -41,18 +47,12 @@ export const ScheduleNav: React.FC<{
   return (
     <nav className='mt-4 flex flex-wrap items-center gap-4'>
       <div className='flex flex-1 items-center gap-3 text-xs text-muted-foreground'>
-        <span className='flex items-center gap-1.5'>
-          <span className='size-2 rounded-full bg-success' />
-          Completed
-        </span>
-        <span className='flex items-center gap-1.5'>
-          <span className='size-2 rounded-full bg-warning' />
-          Pending
-        </span>
-        <span className='flex items-center gap-1.5'>
-          <span className='size-2 rounded-full bg-destructive' />
-          Missed
-        </span>
+        {STATUSES.map((status) => (
+          <span key={status.label} className='flex items-center gap-1.5'>
+            <span className={cn('size-2 rounded-full', status.color)} />
+            {status.label}
+          </span>
+        ))}
       </div>
 
       <Button

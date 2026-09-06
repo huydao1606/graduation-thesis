@@ -40,7 +40,12 @@ export class ListDevicesUseCase extends Context.Service<
 
         const [devices, total] = yield* Effect.all(
           [
-            deviceRepository.findMany({ where, limit, offset }),
+            deviceRepository.findMany({
+              where,
+              limit,
+              offset,
+              orderBy: { factoryModel: 'desc' },
+            }),
             deviceRepository.count(where),
           ],
           { concurrency: 'unbounded' }

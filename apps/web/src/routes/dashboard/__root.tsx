@@ -5,10 +5,10 @@ import {
   SidebarProvider,
   SidebarTrigger,
 } from '@rozumari/ui/components/sidebar'
-import { useLayoutEffect } from 'react'
+import { useIsomorphicLayoutEffect } from '@rozumari/ui/hooks/use-isomorphic-layout-effect'
 import { Outlet, useNavigate } from 'react-router'
 
-import { useSession } from '@/lib/use-session'
+import { useSession } from '@/hooks/use-session'
 import { Breadcrumbs } from '@/routes/dashboard/_components/breadcrumbs'
 import { DashboardSidebar } from '@/routes/dashboard/_components/dashboard-sidebar'
 
@@ -16,8 +16,15 @@ export default function DashboardRoot() {
   const { status } = useSession()
   const navigate = useNavigate()
 
-  useLayoutEffect(() => {
-    if (status === 'unauthenticated') navigate('/login', { replace: true })
+  useIsomorphicLayoutEffect(() => {
+    let isMounted = true
+
+    if (status === 'unauthenticated' && isMounted)
+      navigate('/login', { replace: true })
+
+    return () => {
+      isMounted = false
+    }
   }, [navigate, status])
 
   if (status === 'loading')

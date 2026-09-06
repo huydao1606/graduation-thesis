@@ -12,6 +12,7 @@ import { Typography } from '@rozumari/ui/components/typography'
 import { FormBuilder } from '@rozumari/ui/lib/form-builder'
 import { useNavigate } from 'react-router'
 
+import { useSession } from '@/hooks/use-session'
 import { api } from '@/lib/runtime'
 
 const changePasswordForm = FormBuilder.empty
@@ -26,6 +27,7 @@ const changePasswordForm = FormBuilder.empty
 
 export default function ChangePasswordPage() {
   const navigate = useNavigate()
+  const { logout } = useSession()
 
   return (
     <>
@@ -63,6 +65,8 @@ export default function ChangePasswordPage() {
                       description:
                         'Password changed successfully. Please log in again.',
                     })
+
+                    logout()
                     navigate('/login', { replace: true })
                   },
                   onError: () =>

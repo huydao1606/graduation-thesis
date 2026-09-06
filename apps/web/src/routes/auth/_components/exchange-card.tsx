@@ -11,8 +11,8 @@ import { useMutation } from '@tanstack/react-query'
 import { useEffect, useRef } from 'react'
 import { useNavigate } from 'react-router'
 
+import { useSession } from '@/hooks/use-session'
 import { api } from '@/lib/runtime'
-import { useSession } from '@/lib/use-session'
 
 export const ExchangeCard: React.FC<{ token: string }> = ({ token }) => {
   const navigate = useNavigate()
