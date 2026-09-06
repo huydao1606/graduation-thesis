@@ -1,3 +1,10 @@
+## @rozumari/mobile@0.0.4
+
+### Fix action
+
+- Add automatic artifact downloading from EAS
+- Update mobile release workflow triggers
+
 ## @rozumari/mobile@0.0.3
 
 ### Feature Additions & Mobile Navigation Restructuring
