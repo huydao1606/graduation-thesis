@@ -9,12 +9,38 @@ import { useEffect } from 'react'
 import { StatusBar } from 'react-native'
 import { Uniwind, useCSSVariable, useUniwind } from 'uniwind'
 
+import { useGeistFonts } from '@/hooks/use-geist-fonts'
 import { RuntimeProvider } from '@/hooks/use-runtime'
-import { SessionProvider } from '@/hooks/use-session'
+import { SessionProvider, useSession } from '@/hooks/use-session'
+import { requestBLEPermissions } from '@/lib/ble'
 import { getTheme } from '@/lib/secure-store'
 
 SplashScreen.preventAutoHideAsync()
 const queryClient = createQueryClient()
+
+function RootLayoutInner() {
+  const [fontLoaded, fontError] = useGeistFonts()
+  const { status } = useSession()
+
+  useEffect(() => {
+    void (async () => {
+      if (!fontLoaded && fontError) return
+      if (status === 'loading') return
+
+      try {
+        const theme = await getTheme()
+        Uniwind.setTheme(theme)
+      } finally {
+        await SplashScreen.hideAsync()
+      }
+
+      // check permission...
+      await requestBLEPermissions()
+    })()
+  }, [fontLoaded, fontError, status])
+
+  return <Slot />
+}
 
 export default function RootLayout() {
   const { theme: colorscheme } = useUniwind()
@@ -25,17 +51,6 @@ export default function RootLayout() {
   const cardColor = useCSSVariable('--color-card') as string
   const popoverColor = useCSSVariable('--color-popover') as string
   const borderColor = useCSSVariable('--color-border') as string
-
-  useEffect(() => {
-    void (async () => {
-      const theme = await getTheme()
-      Uniwind.setTheme(theme)
-
-      // check permission...
-
-      await SplashScreen.hideAsync()
-    })()
-  }, [])
 
   return (
     <ThemeProvider
@@ -57,7 +72,7 @@ export default function RootLayout() {
         <QueryClientProvider client={queryClient}>
           <RuntimeProvider>
             <SessionProvider>
-              <Slot />
+              <RootLayoutInner />
             </SessionProvider>
           </RuntimeProvider>
         </QueryClientProvider>

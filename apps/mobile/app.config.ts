@@ -27,35 +27,58 @@ export default ({ config }: ConfigContext): ExpoConfig => ({
   android: {
     package: `com.${appName}.mobile`,
     adaptiveIcon: {
-      foregroundImage: './assets/icon-light.png',
-      backgroundColor: '#000000',
+      foregroundImage: './assets/adaptive-icon.png',
+      backgroundColor: '#DBE4FF',
+      monochromeImage: './assets/adaptive-icon-monochrome.png',
     },
+    permissions: [
+      'android.permission.BLUETOOTH',
+      'android.permission.BLUETOOTH_ADMIN',
+      'android.permission.BLUETOOTH_CONNECT',
+      'android.permission.BLUETOOTH_SCAN',
+      'android.permission.ACCESS_FINE_LOCATION',
+    ],
   },
 
   ios: {
     bundleIdentifier: `com.${appName}.mobile`,
     supportsTablet: true,
+    icon: {
+      light: './assets/icon-light.png',
+      dark: './assets/icon-dark.png',
+      tinted: './assets/icon-tinted.png',
+    },
   },
+
+  plugins: [
+    'expo-font',
+    'expo-router',
+    [
+      'expo-secure-store',
+      {
+        configureAndroidBackup: true,
+        faceIDPermission:
+          'Allow $(PRODUCT_NAME) to access your Face ID biometric data.',
+      },
+    ],
+    [
+      'expo-splash-screen',
+      {
+        backgroundColor: '#DBE4FF',
+        image: './assets/icon-light.png',
+        dark: {
+          backgroundColor: '#0D1633',
+          image: './assets/icon-dark.png',
+        },
+      },
+    ],
+    'expo-system-ui',
+    'react-native-ble-manager',
+  ],
 
   experiments: {
     tsconfigPaths: true,
     typedRoutes: true,
     reactCompiler: true,
   },
-
-  plugins: [
-    'expo-router',
-    'expo-secure-store',
-    [
-      'expo-splash-screen',
-      {
-        backgroundColor: '#FAFAFA',
-        image: './assets/icon-light.png',
-        dark: {
-          backgroundColor: '#000000',
-          image: './assets/icon-dark.png',
-        },
-      },
-    ],
-  ],
 })

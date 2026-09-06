@@ -27,6 +27,8 @@ export default function TabsProfileLayout() {
       />
 
       <Stack.Screen name='settings' options={{ title: 'Settings' }} />
+
+      <Stack.Screen name='config' options={{ title: 'Device Configuration' }} />
     </Stack>
   )
 }

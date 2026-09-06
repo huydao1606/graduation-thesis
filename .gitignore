@@ -11,6 +11,8 @@ dist/
 
 # expo
 .expo/
+android/
+ios/
 expo-env.d.ts
 
 # python
