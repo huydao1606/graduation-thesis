@@ -80,7 +80,10 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.PAT_TOKEN }}
         run: |
-          gh release upload "${{ env.TAG_NAME }}" \
-            apps/mobile/build-artifacts/rozumari-v*.apk \
-            apps/mobile/build-artifacts/rozumari-v*.ipa \
-            --clobber
+          if compgen -G "apps/mobile/build-artifacts/*" > /dev/null; then
+            gh release upload "${{ env.TAG_NAME }}" \
+              apps/mobile/build-artifacts/* \
+              --clobber
+          else
+            echo "No build artifacts found, skipping upload."
+          fi
