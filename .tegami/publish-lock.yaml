@@ -1,6 +1,6 @@
 core:changelogs:
-  - content: "---\npackages:\n  npm:@rozumari/mobile:\n    type: patch\n---\n\n## Fix action\n\n- Add automatic artifact downloading from EAS\n- Update mobile release workflow triggers\n"
-    filename: 2026-09-06-mtp4avka.md
+  - content: "---\npackages:\n  npm:@rozumari/mobile:\n    type: patch\n---\n\n## Bug Fixes\n\n- Add root `index.tsx` route to prevent `Unmatched Route` errors on production builds\n- Merge theme initialization and auth redirect logic in root layout effect\n"
+    filename: 2026-09-06-mtp8dea3.md
     v: 0.0.0
 core:packages:
   - id: npm:graduation-thesis
@@ -9,36 +9,36 @@ core:packages:
     updated: false
   - id: npm:@rozumari/web
     updated: false
-  - id: npm:@rozumari/api
-    updated: false
-  - changelogIds:
-      - 2026-09-06-mtp4avka.md
-    id: npm:@rozumari/mobile
-    updated: true
-  - id: npm:@rozumari/firmware
+  - id: npm:@rozumari/tsconfig
     updated: false
   - id: npm:@rozumari/ui
     updated: false
-  - id: npm:@rozumari/eda
-    updated: false
   - id: npm:@rozumari/lib
+    updated: false
+  - id: npm:@rozumari/eda
     updated: false
   - id: npm:@rozumari/contract
     updated: false
+  - id: npm:@rozumari/api
+    updated: false
   - id: npm:@rozumari/oxlint
     updated: false
-  - id: npm:@rozumari/tsconfig
+  - id: npm:@rozumari/firmware
     updated: false
+  - changelogIds:
+      - 2026-09-06-mtp8dea3.md
+    id: npm:@rozumari/mobile
+    updated: true
 npm:packages:
   - id: npm:graduation-thesis
   - id: npm:@rozumari/github
   - id: npm:@rozumari/web
-  - id: npm:@rozumari/api
-  - id: npm:@rozumari/mobile
-  - id: npm:@rozumari/firmware
-  - id: npm:@rozumari/ui
-  - id: npm:@rozumari/eda
-  - id: npm:@rozumari/lib
-  - id: npm:@rozumari/contract
-  - id: npm:@rozumari/oxlint
   - id: npm:@rozumari/tsconfig
+  - id: npm:@rozumari/ui
+  - id: npm:@rozumari/lib
+  - id: npm:@rozumari/eda
+  - id: npm:@rozumari/contract
+  - id: npm:@rozumari/api
+  - id: npm:@rozumari/oxlint
+  - id: npm:@rozumari/firmware
+  - id: npm:@rozumari/mobile

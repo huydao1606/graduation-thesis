@@ -1,3 +1,10 @@
+## @rozumari/mobile@0.0.5
+
+### Bug Fixes
+
+- Add root `index.tsx` route to prevent `Unmatched Route` errors on production builds
+- Merge theme initialization and auth redirect logic in root layout effect
+
 ## @rozumari/mobile@0.0.4
 
 ### Fix action
