@@ -1,3 +1,10 @@
+## @rozumari/mobile@0.0.7
+
+### Patch Changes
+
+- **@rozumari/mobile**: Added BLE connection handling with Bluetooth permissions and device state checks.
+- **@rozumari/ui**: Added `Select` component supporting single/multi-selection with bottom sheet modal UI.
+
 ## @rozumari/mobile@0.0.6
 
 ### Bug Fixes
