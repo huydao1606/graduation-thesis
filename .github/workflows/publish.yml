@@ -27,6 +27,22 @@ jobs:
       - uses: actions/checkout@v7
       - uses: ./tools/github/actions/setup
 
+      - name: Setup Java
+        uses: actions/setup-java@v6
+        with:
+          distribution: temurin
+          java-version: '17'
+
+      - name: Setup Android
+        uses: android-actions/setup-android@v4
+
+      - name: Setup EAS CLI
+        uses: expo/expo-github-action@v8
+        with:
+          eas-version: latest
+          packager: bun
+          token: ${{ secrets.EXPO_TOKEN }}
+
       - name: Extract Tag Name and Version
         id: get_tag
         run: |
@@ -41,56 +57,29 @@ jobs:
           echo "TAG_NAME=${TAG_NAME}" >> $GITHUB_ENV
           echo "APP_VERSION=${VERSION}" >> $GITHUB_ENV
 
-      - name: Setup EAS CLI
-        uses: expo/expo-github-action@v8
-        with:
-          eas-version: latest
-          packager: bun
-          token: ${{ secrets.EXPO_TOKEN }}
-
       - name: Build APK & IPA on EAS Cloud
         working-directory: ./apps/mobile
         env:
           EXPO_PUBLIC_API_URL: ${{ secrets.EXPO_PUBLIC_API_URL }}
         run: |
-          eas build --platform android --profile production --non-interactive
+          mkdir -p ./build
 
-      - name: Download Artifacts from EAS Build
-        working-directory: ./apps/mobile
-        run: |
-          mkdir -p ./build-artifacts
-          eas build:list --limit=2 --json --non-interactive > builds.json
-
-          jq -c '
-            map(select(.artifacts.buildUrl != null)) 
-            | group_by(.platform) 
-            | map(.[0]) 
-            | .[] 
-            | {platform: .platform, url: .artifacts.buildUrl}
-          ' builds.json | while read -r item; do
-
-            PLATFORM=$(echo "$item" | jq -r '.platform | ascii_downcase')
-            URL=$(echo "$item" | jq -r '.url')
-
-            if [ "$PLATFORM" = "android" ]; then
-              EXT="apk"
-            else
-              EXT="ipa"
-            fi
-
-            FILENAME="./build-artifacts/rozumari-v${{ env.APP_VERSION }}.${EXT}"
-            echo "Downloading $PLATFORM build to $FILENAME..."
-            curl -L "$URL" -o "$FILENAME"
-          done
+          eas build \
+            --output="./build/rozumari-v${{ env.APP_VERSION }}.apk"
+            --platform android \
+            --profile production \
+            --non-interactive \
+            --local
 
       - name: Upload Build Artifacts to Existing GitHub Release
         env:
           GITHUB_TOKEN: ${{ secrets.PAT_TOKEN }}
         run: |
-          if compgen -G "apps/mobile/build-artifacts/*" > /dev/null; then
+          if compgen -G "apps/mobile/build/*" > /dev/null; then
             gh release upload "${{ env.TAG_NAME }}" \
-              apps/mobile/build-artifacts/* \
+              apps/mobile/build/rozumari-v${{ env.APP_VERSION }}.apk \
               --clobber
           else
-            echo "No build artifacts found, skipping upload."
+            echo "No APK build artifact found, skipping upload."
+            exit 1
           fi
