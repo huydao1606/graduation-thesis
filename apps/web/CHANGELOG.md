@@ -1,3 +1,23 @@
+## @rozumari/web@0.0.18
+
+### Feature Additions & Mobile Navigation Restructuring
+
+
+
+### `@rozumari/api`
+
+- Added endpoint for fetching unread notifications count.
+
+### `@rozumari/web`
+
+- Fixed and polished UI layouts and styling across core components.
+
+### `@rozumari/mobile`
+
+- Added schedule viewing feature.
+- Implemented notification management flow (list view and detail inspector).
+- Restructured navigation architecture: organized root-level tabs with nested stack navigators for improved screen isolation and deep linking.
+
 ## @rozumari/web@0.0.17
 
 ### Fix various UI errors and component rendering glitches:
