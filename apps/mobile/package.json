@@ -8,7 +8,8 @@
     "android": "expo start --android",
     "clean": "git clean -fdx .cache .turbo node_modules",
     "dev": "expo start",
-    "ios": "expo start --ios"
+    "ios": "expo start --ios",
+    "postinstall": "cd ../.. && bun run build -F './packages/*'"
   },
   "dependencies": {
     "@effect/atom-react": "catalog:effect",
@@ -37,5 +38,12 @@
     "tailwindcss": "catalog:tailwind",
     "typescript": "catalog:dev",
     "uniwind": "catalog:tailwind"
+  },
+  "expo": {
+    "install": {
+      "exclude": [
+        "typescript"
+      ]
+    }
   }
 }

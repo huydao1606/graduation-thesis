@@ -18,6 +18,12 @@ export default ({ config }: ConfigContext): ExpoConfig => ({
     fallbackToCacheTimeout: 0,
   },
 
+  extra: {
+    eas: {
+      projectId: 'd93731d5-6656-4ea4-8b40-e25c9fe96f95',
+    },
+  },
+
   android: {
     package: `com.${appName}.mobile`,
     adaptiveIcon: {
