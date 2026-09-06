@@ -5,14 +5,16 @@
   "type": "module",
   "main": "index.ts",
   "scripts": {
-    "android": "expo start --android",
+    "android": "expo run:android",
     "clean": "git clean -fdx .cache .turbo node_modules",
     "dev": "expo start",
-    "ios": "expo start --ios",
-    "postinstall": "cd ../.. && bun run build -F './packages/*'"
+    "ios": "expo run:ios",
+    "postinstall": "cd ../.. && bun run build -F './packages/*'",
+    "typecheck": "tsc --noEmit"
   },
   "dependencies": {
     "@effect/atom-react": "catalog:effect",
+    "@expo-google-fonts/geist": "^0.4.2",
     "@rozumari/contract": "workspace:*",
     "@rozumari/lib": "workspace:*",
     "@rozumari/ui": "workspace:*",
@@ -21,13 +23,17 @@
     "effect": "catalog:effect",
     "expo": "^57.0.20",
     "expo-constants": "^57.0.17",
+    "expo-device": "^57.0.1",
+    "expo-font": "^57.0.3",
     "expo-linking": "^57.0.9",
     "expo-router": "~57.0.19",
     "expo-secure-store": "^57.0.3",
     "expo-splash-screen": "^57.0.8",
+    "expo-system-ui": "^57.0.3",
     "expo-web-browser": "^57.0.2",
     "react": "catalog:react",
     "react-native": "catalog:react",
+    "react-native-ble-plx": "^3.5.1",
     "react-native-safe-area-context": "~5.7.0",
     "react-native-svg": "15.15.4"
   },

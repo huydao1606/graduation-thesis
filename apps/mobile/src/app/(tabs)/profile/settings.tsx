@@ -1,6 +1,7 @@
 import { RadioGroup, RadioGroupItem } from '@rozumari/ui/components/radio-group'
 import { Typography } from '@rozumari/ui/components/typography'
-import { View } from 'react-native'
+import * as Constants from 'expo-constants'
+import { ScrollView, View } from 'react-native'
 import { Uniwind, useUniwind } from 'uniwind'
 
 import { setTheme } from '@/lib/secure-store'
@@ -9,9 +10,9 @@ export default function TabsProfileSettingsScreen() {
   const { theme, hasAdaptiveThemes } = useUniwind()
 
   return (
-    <View className='p-4'>
+    <View className='gap-4 p-4'>
       <View className='gap-2'>
-        <Typography variant='h2'>Dark Mode</Typography>
+        <Typography variant='h3'>Dark Mode</Typography>
 
         <RadioGroup
           value={hasAdaptiveThemes ? 'system' : theme}
@@ -31,6 +32,11 @@ export default function TabsProfileSettingsScreen() {
           </RadioGroupItem>
         </RadioGroup>
       </View>
+
+      <ScrollView className='gap-2'>
+        <Typography variant='h3'>App Version</Typography>
+        <Typography>{Constants.default.expoConfig?.version}</Typography>
+      </ScrollView>
     </View>
   )
 }

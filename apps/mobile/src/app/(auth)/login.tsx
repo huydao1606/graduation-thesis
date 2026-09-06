@@ -32,88 +32,102 @@ export default function LoginScreen() {
   const { api } = useRuntime()
 
   return (
-    <View className='flex-1 items-center justify-center gap-4 px-4'>
-      <loginForm.Root
-        defaultValues={{ email: '', password: '' }}
-        render={() => <FieldSet className='w-full' />}
-      >
-        <FieldLegend>Login</FieldLegend>
-        <FieldDescription>
-          Please enter your email and password to login to your account.
-        </FieldDescription>
+    <loginForm.Root
+      defaultValues={{ email: '', password: '' }}
+      render={() => (
+        <FieldSet containerClassName='p-4' className='justify-center' />
+      )}
+    >
+      <FieldLegend>Login</FieldLegend>
+      <FieldDescription>
+        Please enter your email and password to login to your account.
+      </FieldDescription>
 
-        <FieldGroup>
-          <loginForm.Field
-            name='email'
-            render={({ field: { onChange, ...field }, meta }) => (
-              <Field>
-                <FieldLabel>Email</FieldLabel>
-                <Input
-                  {...field}
-                  onChangeText={onChange}
-                  placeholder='Enter your email'
-                />
-                <FieldError errors={meta.errors} />
-              </Field>
-            )}
-          />
+      <FieldGroup>
+        <loginForm.Field
+          name='email'
+          render={({ field: { onChange, ...field }, meta }) => (
+            <Field>
+              <FieldLabel>Email</FieldLabel>
+              <Input
+                {...field}
+                onChangeText={onChange}
+                placeholder='Enter your email'
+                keyboardType='email-address'
+                editable={!meta.isPending}
+              />
+              <FieldError errors={meta.errors} />
+            </Field>
+          )}
+        />
 
-          <loginForm.Field
-            name='password'
-            render={({ field: { onChange, ...field }, meta }) => (
-              <Field>
-                <FieldLabel>Password</FieldLabel>
-                <Input
-                  {...field}
-                  onChangeText={onChange}
-                  placeholder='Enter your password'
-                  secureTextEntry
-                />
-                <FieldError errors={meta.errors} />
-              </Field>
-            )}
-          />
+        <loginForm.Field
+          name='password'
+          render={({ field: { onChange, ...field }, meta }) => (
+            <Field>
+              <FieldLabel>Password</FieldLabel>
+              <Input
+                {...field}
+                onChangeText={onChange}
+                placeholder='Enter your password'
+                editable={!meta.isPending}
+                secureTextEntry
+              />
+              <FieldError errors={meta.errors} />
+            </Field>
+          )}
+        />
 
-          <loginForm.Submit
-            render={({ handleSubmit }) => (
-              <Field>
-                <Button
-                  onPress={() =>
-                    handleSubmit(
-                      (payload) => api.auth.login.mutateEffect({ payload }),
-                      {
-                        onSuccess: async ({ data }) => {
-                          await setTokens(data.accessToken, data.refreshToken)
-                          await queryClient.invalidateQueries({
-                            queryKey: api.auth.whoami.getQueryKey(),
-                          })
+        <loginForm.Submit
+          render={({ handleSubmit, meta }) => (
+            <Field>
+              <Button
+                disabled={meta.isPending}
+                onPress={() =>
+                  handleSubmit(
+                    (payload) => api.auth.login.mutateEffect({ payload }),
+                    {
+                      onSuccess: async ({ data }) => {
+                        await setTokens(data.accessToken, data.refreshToken)
+                        await queryClient.invalidateQueries({
+                          queryKey: api.auth.whoami.getQueryKey(),
+                        })
 
-                          toast.success('Login successful')
-                          router.navigate('/(tabs)/home')
-                        },
-                        onError: (error) =>
-                          toast.error('Login failed', error.message),
-                      }
-                    )
-                  }
-                >
-                  Login
-                </Button>
-              </Field>
-            )}
-          />
+                        toast.success('Login successful')
+                        router.navigate('/(tabs)/home')
+                      },
+                      onError: (error) =>
+                        toast.error('Login failed', error.message),
+                    }
+                  )
+                }
+              >
+                {meta.isPending ? 'Logging in...' : 'Login'}
+              </Button>
+            </Field>
+          )}
+        />
 
-          <FieldSeparator>
-            <FieldLabel>or</FieldLabel>
-          </FieldSeparator>
+        <View className='flex-row items-center'>
+          <FieldDescription>Don&apos;t have an account? </FieldDescription>
+          <Button
+            variant='link'
+            onPress={() => router.navigate('/(auth)/register')}
+          >
+            Register here
+          </Button>
+        </View>
 
-          <Field orientation='horizontal'>
-            {['facebook', 'google'].map((provider) => (
-              <OAuthButton key={provider} provider={provider} />
-            ))}
-          </Field>
-        </FieldGroup>
-      </loginForm.Root>
-    </View>
+        <FieldSeparator>
+          <FieldLabel>or</FieldLabel>
+        </FieldSeparator>
+
+        <Field orientation='horizontal'>
+          {['facebook', 'google'].map((provider) => (
+            <OAuthButton key={provider} provider={provider} />
+          ))}
+        </Field>
+      </FieldGroup>
+    </loginForm.Root>
   )
 }
