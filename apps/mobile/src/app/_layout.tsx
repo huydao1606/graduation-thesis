@@ -42,23 +42,17 @@ function RootLayoutContent() {
     void (async () => {
       const _theme = await getTheme()
       if (!isMounted) return
-
       Uniwind.setTheme(_theme)
 
       if (status === 'loading') return
 
       const isAuthRoute = segments[0] === '(auth)'
-      if (status === 'unauthenticated' && !isAuthRoute) {
-        if (isMounted) router.replace('/(auth)/login')
-        return
-      }
+      if (status === 'unauthenticated' && !isAuthRoute)
+        router.replace('/(auth)/login')
+      else if (status === 'authenticated' && isAuthRoute)
+        router.replace('/(tabs)/home')
 
-      if (status === 'authenticated' && isAuthRoute) {
-        if (isMounted) router.replace('/(tabs)/home')
-        return
-      }
-
-      if (isMounted) await SplashScreen.hideAsync()
+      await SplashScreen.hideAsync()
     })()
 
     return () => {
@@ -69,7 +63,7 @@ function RootLayoutContent() {
   if (status === 'loading')
     return (
       <View className='flex-1 items-center justify-center bg-background'>
-        <ActivityIndicator size={20} colorClassName='accent-primary' />
+        <ActivityIndicator size='large' colorClassName='accent-primary' />
       </View>
     )
 
