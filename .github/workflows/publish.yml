@@ -65,7 +65,7 @@ jobs:
           mkdir -p ./build
 
           eas build \
-            --output="./build/rozumari-v${{ env.APP_VERSION }}.apk"
+            --output="./build/rozumari-v${{ env.APP_VERSION }}.apk" \
             --platform android \
             --profile production \
             --non-interactive \
