@@ -92,15 +92,14 @@ export default function TabsNotificationsDetailScreen() {
     queryClient,
   ])
 
-  if (isLoading) {
+  if (isLoading)
     return (
       <View className='flex-1 items-center justify-center p-4'>
-        <ActivityIndicator size='large' />
+        <ActivityIndicator size='large' colorClassName='accent-primary' />
       </View>
     )
-  }
 
-  if (!notification) {
+  if (!notification)
     return (
       <View className='flex-1 items-center justify-center p-4'>
         <Typography className='text-muted-foreground'>
@@ -108,7 +107,6 @@ export default function TabsNotificationsDetailScreen() {
         </Typography>
       </View>
     )
-  }
 
   const levelConfig =
     LEVEL_CONFIG[notification.level as keyof typeof LEVEL_CONFIG]
