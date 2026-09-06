@@ -61,7 +61,8 @@ export default function TabsProfileIndexScreen() {
     >
       <Card>
         <Avatar className='mx-auto size-24 overflow-visible'>
-          <AvatarImage source={{ uri: user.image || undefined }} />
+          {user.image && <AvatarImage source={{ uri: user.image }} />}
+
           <AvatarFallback>
             {user.username.charAt(0).toUpperCase()}
           </AvatarFallback>

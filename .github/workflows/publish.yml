@@ -61,7 +61,14 @@ jobs:
           mkdir -p ./build-artifacts
           eas build:list --limit=2 --json --non-interactive > builds.json
 
-          jq -c '.[] | select(.artifacts.buildUrl != null) | {platform: .platform, url: .artifacts.buildUrl}' builds.json | while read -r item; do
+          jq -c '
+            map(select(.artifacts.buildUrl != null)) 
+            | group_by(.platform) 
+            | map(.[0]) 
+            | .[] 
+            | {platform: .platform, url: .artifacts.buildUrl}
+          ' builds.json | while read -r item; do
+
             PLATFORM=$(echo "$item" | jq -r '.platform | ascii_downcase')
             URL=$(echo "$item" | jq -r '.url')
 
