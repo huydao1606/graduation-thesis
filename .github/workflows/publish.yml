@@ -38,8 +38,8 @@ jobs:
 
           VERSION="${TAG_NAME##*@}"
 
-          echo "TAG_NAME=${TAG_NAME}" >> "$GITHUB_ENV"
-          echo "APP_VERSION=${VERSION}" >> "$GITHUB_ENV"
+          echo "TAG_NAME=${TAG_NAME}" >> $GITHUB_ENV
+          echo "APP_VERSION=${VERSION}" >> $GITHUB_ENV
 
       - name: Setup EAS CLI
         uses: expo/expo-github-action@v8
