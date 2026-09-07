@@ -14,6 +14,7 @@ import {
 
 import { ScheduleCard } from '@/components/schedule/schedule-card'
 import { useDateRange } from '@/hooks/use-date-range'
+import { getTimezonedDate } from '@/lib/utils'
 
 export const ScheduleList: React.FC<{
   schedules: ListSchedulesDto.Output
@@ -27,7 +28,7 @@ export const ScheduleList: React.FC<{
 }> = ({ schedules, startDate, endDate, ...props }) => {
   const { isLoading, refetch, isRefetching } = props
 
-  const today = useMemo(() => new Date().toISOString().split('T')[0], [])
+  const today = useMemo(() => getTimezonedDate(), [])
 
   const scrollViewRef = useRef<ScrollView>(null)
   const groupPositions = useRef<Record<string, number>>({})

@@ -9,10 +9,12 @@ import { cn } from '@rozumari/ui/lib/utils'
 import { useMemo } from 'react'
 import { Link } from 'react-router'
 
+const { timeZone } = Intl.DateTimeFormat().resolvedOptions()
+
 const getAdjacentWeekRange = (currentStartDate: string, offsetDays: number) => {
   const date = new Date(currentStartDate)
   date.setDate(date.getDate() + offsetDays)
-  return getCurrentWeekRange(date)
+  return getCurrentWeekRange(date, timeZone)
 }
 
 const STATUSES = [
@@ -74,7 +76,7 @@ export const ScheduleNav: React.FC<{
 
         <Button
           variant='outline'
-          onClick={() => setWeek(getCurrentWeekRange())}
+          onClick={() => setWeek(getCurrentWeekRange(new Date(), timeZone))}
         >
           {formattedRange}
         </Button>
