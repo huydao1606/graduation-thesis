@@ -19,7 +19,7 @@ env:
   TURBO_TOKEN: ${{ secrets.TURBO_TOKEN }}
 
 jobs:
-  release:
+  publish-mobile:
     runs-on: ubuntu-latest
     permissions:
       contents: write
