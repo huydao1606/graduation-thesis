@@ -16,7 +16,9 @@ import { api } from '@/lib/runtime'
 import { DeleteUserDialog } from '@/routes/dashboard/_components/delete-user-dialog'
 import { EditUserDialog } from '@/routes/dashboard/_components/edit-user-dialog'
 
-export const meta = () =>
+import type { Route } from './+types/users'
+
+export const meta: Route.MetaFunction = () =>
   createMetadata({
     title: 'Users',
     description: 'Manage user accounts, roles, and access.',

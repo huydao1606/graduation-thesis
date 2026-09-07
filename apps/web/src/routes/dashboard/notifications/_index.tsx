@@ -9,7 +9,9 @@ import {
   NotificationListSkeleton,
 } from '@/routes/dashboard/_components/notification-list'
 
-export const meta = () =>
+import type { Route } from './+types/_index'
+
+export const meta: Route.MetaFunction = () =>
   createMetadata({
     title: 'Notifications',
     description:

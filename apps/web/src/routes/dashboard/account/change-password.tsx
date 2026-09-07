@@ -3,7 +3,9 @@ import { Typography } from '@rozumari/ui/components/typography'
 import { createMetadata } from '@/lib/metadata'
 import { ChangePasswordForm } from '@/routes/dashboard/account/_components/change-password-form'
 
-export const meta = () =>
+import type { Route } from './+types/change-password'
+
+export const meta: Route.MetaFunction = () =>
   createMetadata({
     title: 'Change Password',
     description: 'Update your password to keep your account secure.',

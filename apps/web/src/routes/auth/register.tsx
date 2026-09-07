@@ -7,7 +7,9 @@ import {
 import { createMetadata } from '@/lib/metadata'
 import { RegisterForm } from '@/routes/auth/_components/register-form'
 
-export const meta = () =>
+import type { Route } from './+types/register'
+
+export const meta: Route.MetaFunction = () =>
   createMetadata({
     title: 'Register',
     description: 'Create an account to access all features.',

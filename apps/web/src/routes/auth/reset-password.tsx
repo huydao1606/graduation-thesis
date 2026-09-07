@@ -5,7 +5,16 @@ import {
 } from '@rozumari/ui/components/card'
 import { useSearchParams } from 'react-router'
 
+import { createMetadata } from '@/lib/metadata'
 import { ResetPasswordForm } from '@/routes/auth/_components/reset-password-form'
+
+import type { Route } from './+types/reset-password'
+
+export const meta: Route.MetaFunction = () =>
+  createMetadata({
+    title: 'Reset Password',
+    description: 'Reset your password by entering your new password.',
+  })
 
 export default function ResetPasswordPage() {
   const [searchParams] = useSearchParams()

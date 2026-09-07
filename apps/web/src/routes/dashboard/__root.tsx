@@ -13,7 +13,10 @@ import { createMetadata } from '@/lib/metadata'
 import { Breadcrumbs } from '@/routes/dashboard/_components/breadcrumbs'
 import { DashboardSidebar } from '@/routes/dashboard/_components/dashboard-sidebar'
 
-export const meta = createMetadata({ title: 'Dashboard' })
+import type { Route } from './+types/__root'
+
+export const meta: Route.MetaFunction = () =>
+  createMetadata({ title: 'Dashboard' })
 
 export default function DashboardRoot() {
   const { status } = useSession()

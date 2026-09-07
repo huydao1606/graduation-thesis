@@ -18,7 +18,9 @@ import { api } from '@/lib/runtime'
 import { AddDeviceButton } from '@/routes/dashboard/pill-boxes/_components/add-device-button'
 import { LinkDeviceButton } from '@/routes/dashboard/pill-boxes/_components/link-device-button'
 
-export const meta = () =>
+import type { Route } from './+types/_index'
+
+export const meta: Route.MetaFunction = () =>
   createMetadata({
     title: 'Pill Boxes',
     description: 'Manage your pill-boxes, check status, and handle refills.',

@@ -9,7 +9,9 @@ import { createMetadata } from '@/lib/metadata'
 import { ExchangeCard } from '@/routes/auth/_components/exchange-card'
 import { LoginForm } from '@/routes/auth/_components/login-form'
 
-export const meta = () =>
+import type { Route } from './+types/login'
+
+export const meta: Route.MetaFunction = () =>
   createMetadata({
     title: 'Login',
     description: 'Login to your account to access all features.',

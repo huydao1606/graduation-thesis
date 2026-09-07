@@ -26,7 +26,9 @@ import { useRef, useState } from 'react'
 import { useSession } from '@/hooks/use-session'
 import { createMetadata } from '@/lib/metadata'
 
-export const meta = () =>
+import type { Route } from './+types/_index'
+
+export const meta: Route.MetaFunction = () =>
   createMetadata({
     title: 'Account',
     description: 'View your account details and manage your profile picture.',

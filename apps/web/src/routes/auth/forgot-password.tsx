@@ -7,7 +7,9 @@ import {
 import { createMetadata } from '@/lib/metadata'
 import { ForgotPasswordForm } from '@/routes/auth/_components/forgot-password-form'
 
-export const meta = () =>
+import type { Route } from './+types/forgot-password'
+
+export const meta: Route.MetaFunction = () =>
   createMetadata({
     title: 'Forgot Password',
     description: 'Reset your password by entering your email address.',
