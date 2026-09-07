@@ -1,3 +1,9 @@
+## @rozumari/mobile@0.0.9
+
+### Bug Fixes
+
+- Added missing postinstall script to build all dependencies packages.
+
 ## @rozumari/mobile@0.0.8
 
 ### Bug Fixes & Improvements
