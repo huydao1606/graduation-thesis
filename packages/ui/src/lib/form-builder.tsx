@@ -225,7 +225,7 @@ export class FormBuilder<TFields extends Schema.Struct.Fields> {
           onChange: (value: TValues[TFieldName]) => void
           onBlur: () => void
         }
-        _meta:_meta: {
+        meta: {
           descriptionId: string
           errorId: string
           errors: FormBuilder.Issues
