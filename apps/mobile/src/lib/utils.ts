@@ -1,4 +1,5 @@
 import Constants from 'expo-constants'
+import { getCalendars } from 'expo-localization'
 
 /**
  * Extend this function when going to production by
@@ -23,4 +24,12 @@ export const getBaseUrl = () => {
   throw new Error(
     'Could not determine the base URL. Please set the EXPO_PUBLIC_API_URL environment variable.'
   )
+}
+
+export const getTimezonedDate = (now = new Date()) => {
+  const timeZone = getCalendars()[0].timeZone ?? 'UTC'
+  return Intl.DateTimeFormat('en-CA', {
+    timeZone,
+    dateStyle: 'short',
+  }).format(now)
 }

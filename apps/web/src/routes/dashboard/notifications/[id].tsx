@@ -16,11 +16,18 @@ import { Typography } from '@rozumari/ui/components/typography'
 import { useQuery } from '@tanstack/react-query'
 import { Link } from 'react-router'
 
+import { createMetadata } from '@/lib/metadata'
 import { api } from '@/lib/runtime'
 import { formatDate } from '@/lib/utils'
-import { levelMeta } from '@/routes/dashboard/_components/notification-list'
+import { LEVEL_METAS } from '@/routes/dashboard/_components/notification-list'
 
 import type { Route } from './+types/[id]'
+
+export const meta: Route.MetaFunction = ({ params }) =>
+  createMetadata({
+    title: `Notification ${params.id}`,
+    description: `Details for notification ${params.id}`,
+  })
 
 export default function NotificationDetailsPage({
   params,
@@ -32,15 +39,15 @@ export default function NotificationDetailsPage({
   if (!data?.data) return null
 
   const notification = data.data
-  const meta = levelMeta[notification.level as keyof typeof levelMeta]
+  const levelMeta = LEVEL_METAS[notification.level as keyof typeof LEVEL_METAS]
 
   return (
     <>
       <div className='flex items-start gap-4'>
         <div
-          className={`flex size-14 shrink-0 items-center justify-center rounded-2xl ${meta.iconClass}`}
+          className={`flex size-14 shrink-0 items-center justify-center rounded-2xl ${levelMeta.iconClass}`}
         >
-          <meta.icon className='size-7' />
+          <levelMeta.icon className='size-7' />
         </div>
 
         <div className='flex flex-col gap-2'>

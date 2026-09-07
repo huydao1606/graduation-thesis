@@ -33,8 +33,6 @@ export default [
         '/account/change-password',
         './routes/dashboard/account/change-password.tsx'
       ),
-
-      route('/*', './routes/dashboard/[...catch-all].tsx'),
     ])
   ),
 ] satisfies RouteConfig

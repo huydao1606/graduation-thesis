@@ -13,7 +13,6 @@ import {
 } from '@rozumari/ui/components/card'
 import {
   Calendar1Icon,
-  CogIcon,
   LogOutIcon,
   MailIcon,
   ShieldIcon,
@@ -21,7 +20,6 @@ import {
 } from '@rozumari/ui/components/icons'
 import { Separator } from '@rozumari/ui/components/separator'
 import { Typography } from '@rozumari/ui/components/typography'
-import { useRouter } from 'expo-router'
 import React, { Fragment } from 'react'
 import { RefreshControl, ScrollView, View } from 'react-native'
 
@@ -29,7 +27,6 @@ import { useSession } from '@/hooks/use-session'
 
 export default function TabsProfileIndexScreen() {
   const { status, user, refetch, isRefetching, logout } = useSession()
-  const router = useRouter()
   if (status !== 'authenticated') return null
 
   const informations = [
@@ -106,20 +103,10 @@ export default function TabsProfileIndexScreen() {
         </Card>
       </View>
 
-      <View className='gap-4'>
-        <Button
-          variant='info'
-          size='lg'
-          onPress={() => router.push('/(tabs)/profile/config')}
-        >
-          <CogIcon className='size-4 text-info' />
-          <Typography>Config Device</Typography>
-        </Button>
-        <Button variant='destructive' size='lg' onPress={logout}>
-          <LogOutIcon className='size-4 text-destructive' />
-          <Typography>Log Out</Typography>
-        </Button>
-      </View>
+      <Button variant='destructive' size='lg' onPress={logout}>
+        <LogOutIcon className='size-4 text-destructive' />
+        <Typography>Log Out</Typography>
+      </Button>
     </ScrollView>
   )
 }

@@ -2,7 +2,7 @@ import { Button } from '@rozumari/ui/components/button'
 import { Typography } from '@rozumari/ui/components/typography'
 import * as Linking from 'expo-linking'
 import { useEffect, useState } from 'react'
-import { Alert, View } from 'react-native'
+import { View } from 'react-native'
 
 import { isExpoGo } from '@/lib/constants'
 
@@ -28,10 +28,6 @@ export default function ProfileConfigScreen() {
         setIsBluetoothAvailable(true)
       } catch {
         setIsBluetoothAvailable(false)
-        return Alert.alert(
-          'Bluetooth is Off',
-          'Please turn on Bluetooth to use this feature.'
-        )
       }
 
       await BleManager.scan()
@@ -60,7 +56,7 @@ export default function ProfileConfigScreen() {
 
   return (
     <View className='p-4'>
-      <Typography variant='h1'>Profile Config</Typography>
+      <Typography variant='h1'>Device Configuration</Typography>
     </View>
   )
 }

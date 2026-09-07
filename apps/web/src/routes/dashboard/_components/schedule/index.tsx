@@ -21,7 +21,8 @@ import { ScheduleList } from '@/routes/dashboard/_components/schedule/schedule-l
 import { ScheduleNav } from '@/routes/dashboard/_components/schedule/schedule-nav'
 import { ScheduleSkeleton } from '@/routes/dashboard/_components/schedule/schedule-skeleton'
 
-const { startDate, endDate } = getCurrentWeekRange()
+const { timeZone } = Intl.DateTimeFormat().resolvedOptions()
+const { startDate, endDate } = getCurrentWeekRange(new Date(), timeZone)
 
 export const Schedules: React.FC<{
   deviceId?: DeviceId

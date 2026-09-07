@@ -2,10 +2,7 @@ import type { UniwindConfig } from 'uniwind'
 
 import * as SecureStore from 'expo-secure-store'
 
-const REFRESH_TOKEN_KEY = 'auth.refreshToken'
-const ACCESS_TOKEN_KEY = 'auth.accessToken'
-
-const THEME_KEY = 'config.theme'
+import { ACCESS_TOKEN_KEY, REFRESH_TOKEN_KEY, THEME_KEY } from '@/lib/constants'
 
 const options = (group: string) => ({
   keychainAccessible: SecureStore.WHEN_UNLOCKED_THIS_DEVICE_ONLY,

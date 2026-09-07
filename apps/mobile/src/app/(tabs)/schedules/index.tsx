@@ -1,5 +1,6 @@
 import { getCurrentWeekRange } from '@rozumari/lib/get-current-week-range'
 import { useQuery } from '@tanstack/react-query'
+import { getCalendars } from 'expo-localization'
 import { useState } from 'react'
 import { View } from 'react-native'
 
@@ -7,7 +8,8 @@ import { ScheduleList } from '@/components/schedule/schedule-list'
 import { ScheduleNav } from '@/components/schedule/schedule-nav'
 import { useRuntime } from '@/hooks/use-runtime'
 
-const { startDate, endDate } = getCurrentWeekRange()
+const timezone = getCalendars()[0].timeZone ?? ''
+const { startDate, endDate } = getCurrentWeekRange(new Date(), timezone)
 
 export default function TabsSchedulesIndexScreen() {
   const { api } = useRuntime()

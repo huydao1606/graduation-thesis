@@ -6,13 +6,16 @@ import {
 } from '@rozumari/ui/components/icons'
 import { Typography } from '@rozumari/ui/components/typography'
 import { cn } from '@rozumari/ui/lib/utils'
+import { getCalendars } from 'expo-localization'
 import { useMemo } from 'react'
 import { View } from 'react-native'
+
+const timezone = getCalendars()[0].timeZone ?? 'UTC'
 
 const getAdjacentWeekRange = (currentStartDate: string, offsetDays: number) => {
   const date = new Date(currentStartDate)
   date.setDate(date.getDate() + offsetDays)
-  return getCurrentWeekRange(date)
+  return getCurrentWeekRange(date, timezone)
 }
 
 const STATUSES = [
@@ -32,10 +35,12 @@ export const ScheduleNav: React.FC<{
     const end = new Date(endDate)
 
     const startStr = start.toLocaleDateString('en-US', {
+      timeZone: timezone,
       month: 'short',
       day: 'numeric',
     })
     const endStr = end.toLocaleDateString('en-US', {
+      timeZone: timezone,
       month: 'short',
       day: 'numeric',
       year: 'numeric',
@@ -67,7 +72,7 @@ export const ScheduleNav: React.FC<{
         <Button
           variant='outline'
           className='rounded-none border-none'
-          onPress={() => setWeek(getCurrentWeekRange())}
+          onPress={() => setWeek(getCurrentWeekRange(new Date(), timezone))}
         >
           <Typography>{formattedRange}</Typography>
         </Button>
