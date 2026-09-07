@@ -13,7 +13,7 @@ import { Link } from 'react-router'
 
 import { formatDate } from '@/lib/utils'
 
-export const levelMeta = {
+export const LEVEL_METAS = {
   error: {
     icon: CircleAlertIcon,
     iconClass: 'bg-destructive/10 text-destructive',
@@ -78,7 +78,7 @@ export const NotificationList: React.FC<{
 
       <section className='overflow-hidden rounded-xl border border-border bg-card shadow-sm'>
         {items.map((item, index) => {
-          const meta = levelMeta[item.level as keyof typeof levelMeta]
+          const meta = LEVEL_METAS[item.level as keyof typeof LEVEL_METAS]
 
           return (
             <Link

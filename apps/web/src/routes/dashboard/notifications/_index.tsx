@@ -2,11 +2,19 @@ import { Button } from '@rozumari/ui/components/button'
 import { Typography } from '@rozumari/ui/components/typography'
 import { useInfiniteQuery } from '@tanstack/react-query'
 
+import { createMetadata } from '@/lib/metadata'
 import { api } from '@/lib/runtime'
 import {
   NotificationList,
   NotificationListSkeleton,
 } from '@/routes/dashboard/_components/notification-list'
+
+export const meta = () =>
+  createMetadata({
+    title: 'Notifications',
+    description:
+      'Stay up to date with your medication schedule, refills, and care plan.',
+  })
 
 export default function NotificationsPage() {
   const { data, isLoading, hasNextPage, fetchNextPage, isFetchingNextPage } =

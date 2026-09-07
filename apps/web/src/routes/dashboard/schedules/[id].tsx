@@ -28,9 +28,16 @@ import {
 import { Typography } from '@rozumari/ui/components/typography'
 import { useQuery } from '@tanstack/react-query'
 
+import { createMetadata } from '@/lib/metadata'
 import { api } from '@/lib/runtime'
 
 import type { Route } from './+types/[id]'
+
+export const meta: Route.MetaFunction = ({ params }) =>
+  createMetadata({
+    title: `Schedule Details - ${params.id}`,
+    description: `View schedule details for schedule ID ${params.id}.`,
+  })
 
 const statusVariantMap = {
   completed: 'success',

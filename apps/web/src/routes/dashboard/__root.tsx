@@ -9,8 +9,11 @@ import { useIsomorphicLayoutEffect } from '@rozumari/ui/hooks/use-isomorphic-lay
 import { Outlet, useNavigate } from 'react-router'
 
 import { useSession } from '@/hooks/use-session'
+import { createMetadata } from '@/lib/metadata'
 import { Breadcrumbs } from '@/routes/dashboard/_components/breadcrumbs'
 import { DashboardSidebar } from '@/routes/dashboard/_components/dashboard-sidebar'
+
+export const meta = createMetadata({ title: 'Dashboard' })
 
 export default function DashboardRoot() {
   const { status } = useSession()
