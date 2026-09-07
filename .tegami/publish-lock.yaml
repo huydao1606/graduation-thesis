@@ -1,46 +1,44 @@
 core:changelogs:
-  - content: "---\npackages:\n  npm:@rozumari/mobile:\n    type: patch\n  npm:@rozumari/web:\n    type: patch\n---\n\n## Bug Fixes & Improvements\n\n- **Branding:** Updated app icon branding for both web and mobile applications.\n- **Fix:** Fixed timezone offset issues affecting schedule timing and notifications.\n"
-    filename: 2026-09-07-mtre4ppf.md
+  - content: "---\npackages:\n  npm:@rozumari/mobile:\n    type: patch\n---\n\n## Bug Fixes\n\n- Added missing postinstall script to build all dependencies packages.\n"
+    filename: 2026-09-07-mtrf0nby.md
     v: 0.0.0
 core:packages:
   - id: npm:graduation-thesis
     updated: false
+  - id: npm:@rozumari/github
+    updated: false
   - id: npm:@rozumari/oxlint
+    updated: false
+  - id: npm:@rozumari/tsconfig
+    updated: false
+  - id: npm:@rozumari/ui
+    updated: false
+  - id: npm:@rozumari/lib
     updated: false
   - id: npm:@rozumari/contract
     updated: false
   - id: npm:@rozumari/eda
     updated: false
-  - id: npm:@rozumari/lib
+  - id: npm:@rozumari/api
     updated: false
   - id: npm:@rozumari/firmware
     updated: false
-  - id: npm:@rozumari/ui
-    updated: false
   - changelogIds:
-      - 2026-09-07-mtre4ppf.md
-    id: npm:@rozumari/web
-    updated: true
-  - id: npm:@rozumari/tsconfig
-    updated: false
-  - id: npm:@rozumari/api
-    updated: false
-  - changelogIds:
-      - 2026-09-07-mtre4ppf.md
+      - 2026-09-07-mtrf0nby.md
     id: npm:@rozumari/mobile
     updated: true
-  - id: npm:@rozumari/github
+  - id: npm:@rozumari/web
     updated: false
 npm:packages:
   - id: npm:graduation-thesis
+  - id: npm:@rozumari/github
   - id: npm:@rozumari/oxlint
+  - id: npm:@rozumari/tsconfig
+  - id: npm:@rozumari/ui
+  - id: npm:@rozumari/lib
   - id: npm:@rozumari/contract
   - id: npm:@rozumari/eda
-  - id: npm:@rozumari/lib
-  - id: npm:@rozumari/firmware
-  - id: npm:@rozumari/ui
-  - id: npm:@rozumari/web
-  - id: npm:@rozumari/tsconfig
   - id: npm:@rozumari/api
+  - id: npm:@rozumari/firmware
   - id: npm:@rozumari/mobile
-  - id: npm:@rozumari/github
+  - id: npm:@rozumari/web
