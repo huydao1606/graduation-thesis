@@ -6,7 +6,7 @@
   "main": "index.ts",
   "scripts": {
     "android": "expo run:android",
-    "clean": "git clean -fdx .cache .expo .turbo node_modules",
+    "clean": "git clean -fdx .cache .expo .turbo android ios node_modules",
     "dev": "expo start",
     "ios": "expo run:ios",
     "typecheck": "tsc --noEmit"

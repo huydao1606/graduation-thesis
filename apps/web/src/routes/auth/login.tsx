@@ -18,7 +18,7 @@ export const meta = () =>
 export default function LoginPage() {
   const [searchParams] = useSearchParams()
 
-  const token = searchParams.get('token')
+  const token = searchParams.get('refresh_token')
   if (token)
     return (
       <CardHeader>
