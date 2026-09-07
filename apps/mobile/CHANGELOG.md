@@ -1,3 +1,10 @@
+## @rozumari/mobile@0.0.8
+
+### Bug Fixes & Improvements
+
+- **Branding:** Updated app icon branding for both web and mobile applications.
+- **Fix:** Fixed timezone offset issues affecting schedule timing and notifications.
+
 ## @rozumari/mobile@0.0.7
 
 ### Patch Changes

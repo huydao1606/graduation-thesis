@@ -4,6 +4,7 @@ import { index, layout, prefix, route } from '@react-router/dev/routes'
 
 export default [
   index('./routes/_index.tsx'),
+  route('/sitemap.xml', './routes/sitemap.ts'),
 
   layout('./routes/auth/__root.tsx', [
     route('/login', './routes/auth/login.tsx'),

@@ -1,46 +1,46 @@
 core:changelogs:
-  - content: "---\npackages:\n  npm:@rozumari/mobile:\n    type: patch\n  npm:@rozumari/ui:\n    type: patch\n---\n\n## Patch Changes\n\n- **@rozumari/mobile**: Added BLE connection handling with Bluetooth permissions and device state checks.\n- **@rozumari/ui**: Added `Select` component supporting single/multi-selection with bottom sheet modal UI.\n"
-    filename: 2026-09-07-mtq3i4ol.md
+  - content: "---\npackages:\n  npm:@rozumari/mobile:\n    type: patch\n  npm:@rozumari/web:\n    type: patch\n---\n\n## Bug Fixes & Improvements\n\n- **Branding:** Updated app icon branding for both web and mobile applications.\n- **Fix:** Fixed timezone offset issues affecting schedule timing and notifications.\n"
+    filename: 2026-09-07-mtre4ppf.md
     v: 0.0.0
 core:packages:
   - id: npm:graduation-thesis
     updated: false
+  - id: npm:@rozumari/oxlint
+    updated: false
   - id: npm:@rozumari/contract
     updated: false
   - id: npm:@rozumari/eda
     updated: false
   - id: npm:@rozumari/lib
     updated: false
+  - id: npm:@rozumari/firmware
+    updated: false
+  - id: npm:@rozumari/ui
+    updated: false
   - changelogIds:
-      - 2026-09-07-mtq3i4ol.md
-    id: npm:@rozumari/ui
+      - 2026-09-07-mtre4ppf.md
+    id: npm:@rozumari/web
     updated: true
-  - id: npm:@rozumari/web
-    updated: true
+  - id: npm:@rozumari/tsconfig
+    updated: false
   - id: npm:@rozumari/api
     updated: false
   - changelogIds:
-      - 2026-09-07-mtq3i4ol.md
+      - 2026-09-07-mtre4ppf.md
     id: npm:@rozumari/mobile
     updated: true
-  - id: npm:@rozumari/firmware
-    updated: false
-  - id: npm:@rozumari/oxlint
-    updated: false
-  - id: npm:@rozumari/tsconfig
-    updated: false
   - id: npm:@rozumari/github
     updated: false
 npm:packages:
   - id: npm:graduation-thesis
+  - id: npm:@rozumari/oxlint
   - id: npm:@rozumari/contract
   - id: npm:@rozumari/eda
   - id: npm:@rozumari/lib
+  - id: npm:@rozumari/firmware
   - id: npm:@rozumari/ui
   - id: npm:@rozumari/web
+  - id: npm:@rozumari/tsconfig
   - id: npm:@rozumari/api
   - id: npm:@rozumari/mobile
-  - id: npm:@rozumari/firmware
-  - id: npm:@rozumari/oxlint
-  - id: npm:@rozumari/tsconfig
   - id: npm:@rozumari/github
