@@ -16,6 +16,12 @@ class Streaming:
         self.api = Api.create()
 
     async def _handle_payload(self, line: str) -> None:
+        """
+        Parse raw SSE payload lines and trigger hardware or software actions.
+
+        :param line: Raw text line received from the streaming endpoint.
+        :return: None
+        """
         if not line or line.startswith(":keep-alive"):
             return
 
@@ -36,6 +42,32 @@ class Streaming:
             led.value(int(payload))
 
     async def start(self) -> None:
+        """
+        Start the continuous Server-Sent Events (SSE) streaming listener loop with exponential backoff logic.
+
+        Detailed Workflow:
+            1. **Stream Connection Setup**:
+               - Invokes `self.api.stream()` to establish a long-lived HTTP SSE subscription connection to
+                 the endpoint `/api/devices/subscribe`.
+               - Registers `self._handle_payload` as the callback function to handle incoming streaming data chunks.
+               - Sets a 30-second read timeout parameter to detect stalled or dropped socket connections.
+
+            2. **Successful Stream Processing**:
+               - When the connection maintains stability or completes gracefully, resets the connection backoff
+                 delay parameter (`retry_delay`) to its base duration of 2 seconds.
+
+            3. **Error Recovery & Reconnection Logic**:
+               - Catches network, socket, or parsing exceptions thrown during streaming execution without crashing the device.
+               - Prints an error diagnostic message containing the exception payload.
+               - Suspends task execution via `uasyncio.sleep(retry_delay)` before attempting a reconnect.
+
+            4. **Exponential Backoff Retry Calculation**:
+               - Doubles `retry_delay` after each failure iteration (`retry_delay * 2`).
+               - Caps the max backoff wait period at `max_delay` (60 seconds) to prevent infinite growth while conserving resources.
+
+        :return: None
+        :raises Exception: Internal stream or connection exceptions are caught, logged, and handled internally.
+        """
         retry_delay = 2
         max_delay = 60
 

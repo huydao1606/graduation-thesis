@@ -30,17 +30,28 @@ def load_config(file_path: str = "data/config.json", force: bool = False) -> dic
         return {}
 
 
-def save_wifi_config(wifi_config: dict, file_path: str = "data/config.json") -> None:
+def save_config(override: dict, file_path: str = "data/config.json") -> bool:
     """
-    Save the Wi-Fi configuration to a JSON file.
+    Save the configuration to a JSON file.
 
     Args:
-        wifi_config (dict): The Wi-Fi configuration to save.
+        config (dict): The configuration to save.
         file_path (str): The path to the configuration file. Defaults to "data/config.json".
     """
+    global CONFIG_CACHE
 
     config = load_config(file_path)
-    config["wifi"] = wifi_config
+    config["utc"] = override.get("utc", config.get("utc", 7))
+    config["language"] = override.get("language", config.get("language", "en"))
+    config["wifi"] = override.get(
+        "wifi", config.get("wifi", {"ssid": "", "password": ""})
+    )
 
-    with open(file_path, "w") as f:
-        ujson.dump(config, f)
+    try:
+        with open(file_path, "w") as f:
+            ujson.dump(config, f)
+            CONFIG_CACHE = config  # pyright: ignore[reportConstantRedefinition]
+            return True
+    except Exception as e:  # noqa: BLE001
+        print(f"Error saving configuration to {file_path}: {e}")
+        return False

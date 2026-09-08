@@ -25,10 +25,28 @@ class StepperMotor:
         self.off()
 
     def off(self) -> None:
+        """
+        Deenergize all stepper motor coils by pulling pin values LOW to conserve power.
+
+        :return: None
+        """
+
         for p in self.pins:
             p.value(0)
 
     async def move(self, steps: int, delay_ms: int = 2) -> None:
+        """
+        Rotate the stepper motor by a specified number of steps using half-step commutation.
+
+        Half-Step Commutation Mechanics:
+            - Utilizes an 8-state transition table (`HALF_STEP`) to alternate single-coil and dual-coil excitation.
+            - Doubles the step resolution and smooths rotation compared to full-step mode.
+            - Direction is determined by the sign of steps (+1 for forward, -1 for reverse).
+
+        :param steps: Number of steps to move (positive for forward direction, negative for reverse).
+        :param delay_ms: Delay duration in milliseconds between sequential step transitions.
+        :return: None
+        """
         direction = 1 if steps > 0 else -1
         step_index = 0
 
@@ -38,7 +56,7 @@ class StepperMotor:
 
             step_index = (step_index + direction) % 8
 
-            await uasyncio.sleep_ms(delay_ms)  # pyright: ignore[reportAttributeAccessIssue]
+            await uasyncio.sleep_ms(delay_ms)
 
         self.off()
 

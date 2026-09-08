@@ -41,7 +41,7 @@ class Pins:
         self.led_g = Pin(int(pins.get("led-g")), Pin.OUT)
         self.led_b = Pin(int(pins.get("led-b")), Pin.OUT)
 
-        self.buzzer = PWM(Pin(int(pins.get("buzzer"))))
+        self.buzzer = Pin(int(pins.get("buzzer")), Pin.OUT, value=1)
 
         self.tft_spi = SPI(
             1,

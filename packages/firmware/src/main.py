@@ -30,12 +30,18 @@ class Bootstrap:
     async def _config_mode(self) -> None:
         self.ble = BLE.create()
 
+        if self.ble.ble and not self.ble.ble.active():
+            self.ble.ble.active(True)
+
         self.ble.start_advertising()
 
-        while self.switch.value() == 0:
-            await uasyncio.sleep(1)
-
-        self.ble.stop()
+        try:
+            print("Config mode started. Waiting for switch to be released...")
+            while self.switch.value() == 0:
+                await uasyncio.sleep_ms(100)
+        finally:
+            self.ble.stop()
+            print("Config mode stopped.")
 
     async def _normal_mode(self) -> None:
         _ = load_config(force=True)
@@ -62,7 +68,9 @@ class Bootstrap:
         await gather
 
     async def start(self) -> None:
-        if self.switch.value() == 0:
+        switch_state = self.switch.value()
+
+        if switch_state == 0:
             await self._config_mode()
         else:
             await self._normal_mode()

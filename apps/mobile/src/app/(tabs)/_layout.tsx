@@ -30,7 +30,7 @@ export default function TabsLayout() {
         selected: { color: primaryColor },
       }}
 
-      rippleColor={primaryColor}
+      rippleColor={`${primaryColor}33`}
       indicatorColor={mutedColor}
       labelVisibilityMode='labeled'
 

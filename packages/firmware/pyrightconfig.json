@@ -1,5 +1,6 @@
 {
   "reportAny": "none",
+  "reportAttributeAccessIssue": "none",
   "reportUnknownArgumentType": "none",
   "reportMissingModuleSource": "none",
   "reportUnknownParameterType": "none",

@@ -1,0 +1,143 @@
+import uasyncio
+
+from lib.config import load_config, save_config
+from modules.wifi import WiFi
+
+# Enum 3 bit Action (0..7)
+ACTION_PONG = 0
+ACTION_CHECK_WIFI_RES = 1
+
+ACTION_SET_WIFI_RES = 2
+ACTION_SET_UTC_RES = 3
+ACTION_SET_LANGUAGE_RES = 4
+
+ACTION_SEND_DEVICE_INFO = 5
+
+# Enum 5 bit Status (0..31)
+STATUS_FAIL = 0
+STATUS_SUCCESS = 1
+
+
+class BLEHandler:
+    def __init__(self, ble_instance) -> None:  # pyright: ignore[reportMissingParameterType]
+        """
+        Initialize the BLEHandler instance.
+
+        :param ble_instance: The peripheral BLE instance used for communication.
+        """
+        self.ble = ble_instance
+
+    async def handle_command(self, action: str, payload: dict) -> None:
+        """
+        Process incoming commands received via BLE and perform corresponding actions.
+
+        :param action: The command action type to execute.
+        :param payload: Dictionary containing parameters for the action.
+        :return: None
+        """
+
+        if action == "ping":
+            print("Received ping, sending pong byte...")
+            await self.ble.send_code(ACTION_PONG, STATUS_SUCCESS)
+
+        elif action == "check_wifi":
+            ssid = payload.get("ssid")
+            password = payload.get("password")
+            if not ssid or not password:
+                return await self.ble.send_code(ACTION_CHECK_WIFI_RES, STATUS_FAIL)
+
+            _ = uasyncio.create_task(self._handle_check_wifi(ssid, password))
+
+        elif action == "set_wifi":
+            ssid = payload.get("ssid")
+            password = payload.get("password")
+            if not ssid or not password:
+                return await self.ble.send_code(ACTION_SET_WIFI_RES, STATUS_FAIL)
+
+            is_saved = save_config({"wifi": {"ssid": ssid, "password": password}})
+            status = STATUS_SUCCESS if is_saved else STATUS_FAIL
+            await self.ble.send_code(ACTION_SET_WIFI_RES, status)
+
+        elif action == "set_utc":
+            utc = payload.get("utc")
+            if utc is None or not isinstance(utc, (int, float)):
+                return await self.ble.send_code(ACTION_SET_UTC_RES, STATUS_FAIL)
+
+            is_saved = save_config({"utc": int(utc)})
+            status = STATUS_SUCCESS if is_saved else STATUS_FAIL
+            await self.ble.send_code(ACTION_SET_UTC_RES, status)
+
+        elif action == "set_language":
+            language = payload.get("language")
+            if not language or not isinstance(language, str):
+                return await self.ble.send_code(ACTION_SET_LANGUAGE_RES, STATUS_FAIL)
+
+            is_saved = save_config({"language": language})
+            status = STATUS_SUCCESS if is_saved else STATUS_FAIL
+            await self.ble.send_code(ACTION_SET_LANGUAGE_RES, status)
+
+    async def on_connect(self) -> None:
+        """
+        Callback triggered when a BLE client connects to transmit device status payload.
+
+        :return: None
+        """
+
+        await uasyncio.sleep(1)
+        status_code = self._build_device_info_status()
+        await self.ble.send_code(ACTION_SEND_DEVICE_INFO, status_code)
+
+    async def _handle_check_wifi(self, ssid: str, password: str) -> None:
+        """
+        Asynchronously test WiFi credentials and transmit the connection status.
+
+        :param ssid: The Wi-Fi SSID network name.
+        :param password: The Wi-Fi password.
+        :return: None
+        """
+
+        is_connected = await WiFi.check_connection(ssid, password)
+        status = STATUS_SUCCESS if is_connected else STATUS_FAIL
+        await self.ble.send_code(ACTION_CHECK_WIFI_RES, status)
+
+    def _build_device_info_status(self) -> int:
+        """
+        Encode current device configuration (UTC offset and language) into a 5-bit status payload integer.
+
+        Encoding standard:
+            - **Bits 0..3 (4 bits)**: UTC Offset
+                - **Bit 3**: Sign indicator (`1` = positive/non-negative, `0` = negative).
+                - **Bits 0..2**: Absolute UTC value modulo 8 (`abs(utc) & 0x07`).
+            - **Bit 4 (1 bit)**: Language preference
+                - `0` = English ('en')
+                - `1` = Vietnamese ('vi')
+
+        Parsing / Decoding instructions for receiver (Mobile App / Client):
+            1. Extract Status Code: `status_code = raw_byte & 0x1F`
+            2. Parse UTC:
+               - Read 4 LSB bits: `utc_bits = status_code & 0x0F`
+               - Read sign bit: `sign_bit = (utc_bits >> 3) & 0x01`
+               - Read absolute magnitude: `abs_val = utc_bits & 0x07`
+               - Calculate UTC: `utc = abs_val if sign_bit == 1 else -abs_val`
+            3. Parse Language:
+               - Read Bit 4: `lang_bit = (status_code >> 4) & 0x01`
+               - Determine language: `language = "vi" if lang_bit == 1 else "en"`
+
+        :return: A 5-bit packed integer (range 0..31) containing device metadata.
+        """
+
+        config = load_config()
+
+        raw_utc = config.get("utc", 7)
+        utc_val = int(raw_utc) if isinstance(raw_utc, (int, float)) else 7
+        utc_val = max(-12, min(14, utc_val))
+
+        sign_bit = 1 if utc_val >= 0 else 0
+        abs_val = abs(utc_val) & 0x07
+
+        utc_bits = (sign_bit << 3) | abs_val
+
+        lang_str = config.get("language", "en")
+        lang_bits = 1 if lang_str == "vi" else 0
+
+        return (utc_bits & 0x0F) | ((lang_bits & 0x01) << 4)

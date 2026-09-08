@@ -10,15 +10,19 @@ export const scheduleIoTController = HttpApiBuilder.group(
   Api,
   'schedule-iot',
   (handlers) =>
-    handlers.handle('today', () =>
+    handlers.handle('today', ({ query }) =>
       CurrentDevice.pipe(
         Effect.flatMap((deviceId) =>
           ListSchedulesUseCase.use((s) => {
-            const d = new Date()
-            const year = d.getFullYear()
-            const month = String(d.getMonth() + 1).padStart(2, '0')
-            const day = String(d.getDate()).padStart(2, '0')
-            const today = `${year}-${month}-${day}`
+            let today = query.date
+
+            if (!today) {
+              const d = new Date()
+              const year = d.getFullYear()
+              const month = String(d.getMonth() + 1).padStart(2, '0')
+              const day = String(d.getDate()).padStart(2, '0')
+              today = `${year}-${month}-${day}`
+            }
 
             return s.execute({ deviceId, startDate: today, endDate: today })
           })

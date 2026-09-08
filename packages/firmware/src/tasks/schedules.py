@@ -15,6 +15,12 @@ class Schedules:
     _led_timer_task: uasyncio.Task | None = None
 
     def __init__(self, path: str = "data/schedules.json"):
+        """
+        Initialize the Schedules instance with hardware peripherals and file path.
+
+        :param path: File path storing the JSON schedule database.
+        """
+
         self.path = path
         self.servo = Servo.create()
         self.rgb = RGB.create()
@@ -22,7 +28,15 @@ class Schedules:
     async def _set_color_with_timeout(
         self, r: int, g: int, b: int, timeout: int = 10
     ) -> None:
-        """Đổi màu LED và tự động tắt sau [timeout] giây."""
+        """
+        Set the RGB LED color and automatically turn it off after a specified timeout.
+
+        :param r: Red component intensity (0 or 1).
+        :param g: Green component intensity (0 or 1).
+        :param b: Blue component intensity (0 or 1).
+        :param timeout: Time duration in seconds before turning off the LED.
+        :return: None
+        """
         if self._led_timer_task and not self._led_timer_task.done():
             _ = self._led_timer_task.cancel()
 
@@ -38,6 +52,40 @@ class Schedules:
         self._led_timer_task = uasyncio.create_task(_turn_off_after_delay())
 
     async def start(self) -> None:
+        """
+        Start the primary asynchronous event loop that monitors and executes pending schedules.
+
+        Detailed Workflow:
+            1. **Time Tracking & Loop Synchronization**:
+               - Continuously queries the real-time clock via `get_current_time()`.
+               - Formats current date (`DD/MM/YYYY`) and time (`HH:MM`).
+               - Prevents duplicate executions within the same minute by tracking `last_executed_time`.
+
+            2. **Schedule Resolution**:
+               - Reads stored schedule records from `self.path` using `_read_schedule()`.
+               - Prints an formatted status table to the output console.
+               - Filters for items with a `"pending"` status matching the current time and (optional) date.
+
+            3. **Execution & Hardware Feedback**:
+               - Triggers visual LED feedback (Yellow: `(1, 1, 0)`) during processing.
+               - Sequentially iterates through scheduled items, driving the servo mechanism (`self.servo.drop`)
+                 for specified slot indices and pill quantities.
+               - Aborts execution immediately if any slot drop action fails.
+
+            4. **State Persistence & Completion Visuals**:
+               - Updates and persists the schedule state (`"completed"` or `"failed"`) via `_update_schedule_status()`.
+               - Sets post-execution LED feedback:
+                 - **Green `(0, 1, 0)`**: Successful execution.
+                 - **Red `(1, 0, 0)`**: Failed execution or error exception.
+               - Automatically turns off the LED after a 10-second timeout.
+
+            5. **Adaptive Sleep**:
+               - Calculates remaining seconds until the next exact minute boundary (`60 - current_second`)
+                 to minimize CPU usage while keeping precision timing.
+
+        :return: None
+        :raises Exception: Catches and logs runtime exceptions without terminating the main loop.
+        """
         last_executed_time = ""
 
         while True:
@@ -58,7 +106,6 @@ class Schedules:
                         item_time = schedule.get("time")
                         item_status = schedule.get("status", "pending")
 
-                        # Bỏ qua các lịch trình đã chạy xong hoặc thất bại từ trước
                         if item_status != "pending":
                             continue
 
@@ -70,7 +117,7 @@ class Schedules:
 
                             if self._led_timer_task and not self._led_timer_task.done():
                                 _ = self._led_timer_task.cancel()
-                            self.rgb.set_color(1, 1, 0)  # VÀNG khi chạy
+                            self.rgb.set_color(1, 1, 0)
 
                             items = schedule.get("items", [])
                             schedule_success = True
@@ -95,7 +142,6 @@ class Schedules:
                                 else:
                                     print(f"[INFO] Successfully dispensed slot {slot}")
 
-                            # Cập nhật status và ghi lại vào file JSON
                             new_status = "completed" if schedule_success else "failed"
                             self._update_schedule_status(schedule_id, new_status)
 
@@ -103,14 +149,10 @@ class Schedules:
                                 print(
                                     f"[SUCCESS] Schedule {schedule_id} completed successfully."
                                 )
-                                await self._set_color_with_timeout(
-                                    0, 1, 0, timeout=10
-                                )  # XANH LÁ
+                                await self._set_color_with_timeout(0, 1, 0, timeout=10)
                             else:
                                 print(f"[FAILED] Schedule {schedule_id} failed.")
-                                await self._set_color_with_timeout(
-                                    1, 0, 0, timeout=10
-                                )  # ĐỎ
+                                await self._set_color_with_timeout(1, 0, 0, timeout=10)
 
             except Exception as e:  # noqa: BLE001
                 print(f"Error in schedule loop: {e}")
@@ -124,6 +166,12 @@ class Schedules:
             await uasyncio.sleep(seconds_to_next_minute)
 
     def _read_schedule(self) -> list:
+        """
+        Read and deserialize the schedules list from the JSON persistence store.
+
+        :return: List of schedule dictionaries or empty list if read fails.
+        """
+
         try:
             with open(self.path, "r") as f:
                 data = ujson.load(f)
@@ -133,7 +181,14 @@ class Schedules:
             return []
 
     def _update_schedule_status(self, schedule_id: str, new_status: str) -> None:
-        """Đọc file, cập nhật trạng thái của schedule_id và ghi đè lại file JSON."""
+        """
+        Update the execution status of a specific schedule ID and persist back to JSON.
+
+        :param schedule_id: Unique identifier of the target schedule.
+        :param new_status: New status string ('completed' or 'failed').
+        :return: None
+        """
+
         try:
             schedules = self._read_schedule()
             for item in schedules:
