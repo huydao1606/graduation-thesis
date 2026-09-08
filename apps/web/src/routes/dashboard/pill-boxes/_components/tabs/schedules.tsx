@@ -7,6 +7,8 @@ export const SchedulesTab: React.FC = () => {
   const { device } = useDevice()
   if (!device) return null
 
+  console.log('SchedulesTab device:', device)
+
   return (
     <TabsContent value='schedules'>
       <Schedules deviceId={device.id} />
