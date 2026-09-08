@@ -7,8 +7,8 @@ class Pins:
     __instance: Pins | None = None
 
     def __init__(self):
-        __config = load_config()
-        pins = __config.get("pins", {})
+        config = load_config()
+        pins = config.get("pins", {})
 
         self.led = Pin(pins.get("led"), Pin.OUT)
         self.switch = Pin(int(pins.get("switch")), Pin.IN, Pin.PULL_UP)

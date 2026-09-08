@@ -3,6 +3,7 @@ import ujson
 from machine import Pin
 
 from lib.api import Api
+from tasks.sync_schedule import SyncSchedule
 
 led = Pin("LED", Pin.OUT)
 
@@ -11,9 +12,11 @@ class Streaming:
     __instance: Streaming | None = None
 
     api: Api
+    sync_schedule: SyncSchedule
 
     def __init__(self):
         self.api = Api.create()
+        self.sync_schedule = SyncSchedule.create()
 
     async def _handle_payload(self, line: str) -> None:
         """
@@ -40,6 +43,9 @@ class Streaming:
         if action == "led":
             print(f"Setting LED state to: {payload}")
             led.value(int(payload))
+
+        elif action == "sync_schedule":
+            await self.sync_schedule.sync()
 
     async def start(self) -> None:
         """
@@ -68,6 +74,11 @@ class Streaming:
         :return: None
         :raises Exception: Internal stream or connection exceptions are caught, logged, and handled internally.
         """
+        print(
+            "[STARTUP] Streaming task initiated...\n",
+            {"endpoint": "/api/devices/subscribe"},
+        )
+
         retry_delay = 2
         max_delay = 60
 
@@ -92,3 +103,8 @@ class Streaming:
         if cls.__instance is None:
             cls.__instance = Streaming()
         return cls.__instance
+
+
+if __name__ == "__main__":
+    streaming = Streaming.create()
+    uasyncio.run(streaming.start())

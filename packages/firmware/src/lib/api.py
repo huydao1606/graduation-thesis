@@ -23,8 +23,12 @@ class Api:
 
     async def get(self, endpoint: str, params: dict | None = None) -> dict:
         url = f"{self.base_url}{endpoint}"
+        if params:
+            query_string = "&".join(f"{key}={value}" for key, value in params.items())
+            url = f"{url}?{query_string}"
+
         try:
-            res = urequests.get(url, headers=self.base_headers, params=params)
+            res = urequests.get(url, headers=self.base_headers)
             if res.status_code != 200:
                 return {"error": f"Status code: {res.status_code}"}
             return res.json()

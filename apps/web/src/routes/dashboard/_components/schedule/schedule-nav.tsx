@@ -1,3 +1,5 @@
+import type { DeviceId } from '@rozumari/contract/device/schemas/device.schema'
+
 import { getCurrentWeekRange } from '@rozumari/lib/get-current-week-range'
 import { Button } from '@rozumari/ui/components/button'
 import { ButtonGroup } from '@rozumari/ui/components/button-group'
@@ -6,8 +8,11 @@ import {
   ChevronRightIcon,
 } from '@rozumari/ui/components/icons'
 import { cn } from '@rozumari/ui/lib/utils'
+import { useMutation } from '@tanstack/react-query'
 import { useMemo } from 'react'
 import { Link } from 'react-router'
+
+import { api } from '@/lib/runtime'
 
 const { timeZone } = Intl.DateTimeFormat().resolvedOptions()
 
@@ -27,7 +32,8 @@ export const ScheduleNav: React.FC<{
   startDate: string
   endDate: string
   setWeek: (week: { startDate: string; endDate: string }) => void
-}> = ({ startDate, endDate, setWeek }) => {
+  deviceId?: DeviceId
+}> = ({ startDate, endDate, setWeek, deviceId }) => {
   const formattedRange = useMemo(() => {
     if (!startDate || !endDate) return ''
     const start = new Date(startDate)
@@ -46,6 +52,12 @@ export const ScheduleNav: React.FC<{
     return `${startStr} – ${endStr}`
   }, [startDate, endDate])
 
+  const syncSchedule = useMutation({
+    ...api.device.emit.mutationOptions({
+      params: { id: deviceId as DeviceId },
+    }),
+  })
+
   return (
     <nav className='mt-4 flex flex-wrap items-center gap-4'>
       <div className='flex flex-1 items-center gap-3 text-xs text-muted-foreground'>
@@ -63,6 +75,17 @@ export const ScheduleNav: React.FC<{
       >
         Create Schedule
       </Button>
+
+      {deviceId && (
+        <Button
+          onClick={() =>
+            syncSchedule.mutate({ action: 'sync_schedule', payload: {} })
+          }
+          disabled={syncSchedule.isPending}
+        >
+          Sync Schedule
+        </Button>
+      )}
 
       <ButtonGroup>
         <Button

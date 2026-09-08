@@ -3,7 +3,7 @@ import json as ujson
 CONFIG_CACHE: dict | None = None
 
 
-def load_config(file_path: str = "data/config.json", force: bool = False) -> dict:
+def load_config(file_path: str = "/data/config.json", force: bool = False) -> dict:
     """
     Load the configuration from a JSON file.
 
@@ -25,12 +25,12 @@ def load_config(file_path: str = "data/config.json", force: bool = False) -> dic
             if CONFIG_CACHE is None:
                 CONFIG_CACHE = {}  # pyright: ignore[reportConstantRedefinition]
             return CONFIG_CACHE
-    except FileNotFoundError as e:
+    except Exception as e:  # noqa: BLE001
         print(f"Error loading configuration from {file_path}: {e}")
         return {}
 
 
-def save_config(override: dict, file_path: str = "data/config.json") -> bool:
+def save_config(override: dict, file_path: str = "/data/config.json") -> bool:
     """
     Save the configuration to a JSON file.
 

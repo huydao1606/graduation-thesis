@@ -4,20 +4,23 @@ from machine import Pin
 
 from lib.config import load_config
 from lib.pins import Pins
+from lib.schedule import Schedule
 from modules.ble import BLE
-from modules.rgb import RGB
 from modules.sensor import Sensor
 from modules.wifi import WiFi
 from tasks.schedules import Schedules
 from tasks.streaming import Streaming
+from tasks.sync_schedule import SyncSchedule
 
 
 class Bootstrap:
     ble: BLE | None = None
     wifi: WiFi | None = None
+    schedule: Schedule | None = None
 
     streaming: Streaming | None = None
     schedules: Schedules | None = None
+    sync_schedule: SyncSchedule | None = None
 
     switch: Pin
 
@@ -47,24 +50,31 @@ class Bootstrap:
         _ = load_config(force=True)
 
         self.wifi = WiFi.create()
+        self.schedule = Schedule.create()
         self.streaming = Streaming.create()
         self.schedules = Schedules.create()
+        self.sync_schedule = SyncSchedule.create()
 
         is_connected = await self.wifi.connect(force=True)
 
         print("Syncing time...")
-        while is_connected:
+        retry_count, max_retries = 0, 3
+        while is_connected and retry_count < max_retries:
             try:
                 ntptime.settime()
                 print("Time synced successfully.")
                 break
             except Exception as e:  # noqa: BLE001
-                print(f"Failed to sync time: {e}")
-                await uasyncio.sleep(5)
+                retry_count += 1
+                print(f"Failed to sync time (Attempt {retry_count}/{max_retries}): {e}")
+                await uasyncio.sleep(2)
 
-        _ = RGB.create()
+        print("Syncing schedules...")
+        _ = await self.sync_schedule.sync()
 
-        gather = uasyncio.gather(self.streaming.start(), self.schedules.start())
+        gather = uasyncio.gather(
+            self.streaming.start(), self.schedules.start(), self.sync_schedule.start()
+        )
         await gather
 
     async def start(self) -> None:
@@ -76,10 +86,9 @@ class Bootstrap:
             await self._normal_mode()
 
 
-if __name__ == "__main__":
-    bootstrap = Bootstrap()
+bootstrap = Bootstrap()
 
-    try:
-        uasyncio.run(bootstrap.start())
-    except KeyboardInterrupt:
-        print("Program interrupted by user.")
+try:
+    uasyncio.run(bootstrap.start())
+except KeyboardInterrupt:
+    print("Program interrupted by user.")
