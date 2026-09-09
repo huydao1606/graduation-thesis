@@ -1,3 +1,15 @@
+## @rozumari/mobile@0.0.10
+
+### Added BLE Device Configuration & Fixed Multi-byte Payload Transmission
+
+- Added BLE device configuration features and timezone-aware sync time selection.
+
+- Fixed multi-byte BLE frame handling on React Native to correctly parse 16-bit device info payloads without truncation
+
+- Upgraded firmware communication handlers to support 3-byte data frames for transmitting complete configuration states (UTC, language, and sync time)
+
+- Optimized configuration builder and parser logic with robust fallback mechanisms to eliminate default value bottlenecks and parsing errors
+
 ## @rozumari/mobile@0.0.9
 
 ### Bug Fixes

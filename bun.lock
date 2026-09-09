@@ -36,7 +36,7 @@
     },
     "apps/mobile": {
       "name": "@rozumari/mobile",
-      "version": "0.0.9",
+      "version": "0.0.10",
       "dependencies": {
         "@effect/atom-react": "catalog:effect",
         "@expo-google-fonts/geist": "^0.4.2",
@@ -125,7 +125,7 @@
     },
     "packages/firmware": {
       "name": "@rozumari/firmware",
-      "version": "0.0.4",
+      "version": "0.0.5",
     },
     "packages/lib": {
       "name": "@rozumari/lib",
