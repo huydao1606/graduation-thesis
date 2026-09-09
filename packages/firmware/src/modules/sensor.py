@@ -30,12 +30,11 @@ class Sensor:
         """
         current_time: int = time.ticks_ms()
 
-        if time.ticks_diff(current_time, self._states.drop_last_trigger_time) > 80:
+        # Đổi số 80 thành 400 để "làm ngơ" các tín hiệu dội liên tiếp của cùng 1 viên thuốc
+        if time.ticks_diff(current_time, self._states.drop_last_trigger_time) > 400:
             self._states.drop_count += 1
             self._states.drop_last_trigger_time = current_time
-            print(
-                f"\n[DROP SENSOR] Pill detected! Total count: {self._states.drop_count}"
-            )
+            print(f"\n[DROP SENSOR] Pill detected! Total count: {self._states.drop_count}")
 
     def _check_irq(self, _pin: Pin) -> None:
         """
