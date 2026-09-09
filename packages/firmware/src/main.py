@@ -71,12 +71,12 @@ class Bootstrap:
         print("[SETUP] Syncing schedules...")
         _ = await self.sync_schedule.sync()
 
-        _ = uasyncio.create_task(self.sync_schedule.start())
-        _ = uasyncio.create_task(self.streaming.start())
-        _ = uasyncio.create_task(self.schedules.start())
-
-        while True:
-            await uasyncio.sleep(1)
+        gathered_tasks = uasyncio.gather(
+            self.sync_schedule.start(),
+            self.streaming.start(),
+            self.schedules.start(),
+        )
+        await gathered_tasks
 
     async def start(self) -> None:
         switch_state = self.switch.value()

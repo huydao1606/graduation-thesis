@@ -71,13 +71,11 @@ class Schedules:
 
                             if all_success:
                                 print(f"[SCHEDULE] Lịch {sch_id} đã nhả đủ thuốc!")
-                                item_sch["status"] = "completed"
                                 _ = await self.schedule.update_status(
                                     str(sch_id), "completed"
                                 )
                             else:
                                 print(f"[SCHEDULE] Lịch {sch_id} thất bại!")
-                                item_sch["status"] = "failed"
                                 _ = await self.schedule.update_status(
                                     str(sch_id), "failed"
                                 )

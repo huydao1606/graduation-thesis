@@ -49,14 +49,17 @@ class Schedule:
         :param new_status: The new status to set for the schedule.
         :return: True if update was successful, False otherwise.
         """
+        res = await self.api.post(
+            f"/api/schedules/{schedule_id}/update-status",
+            data={"status": new_status},
+        )
+
+        print(f"API response for updating schedule {schedule_id}: {res}")
+
         for schedule in self._schedules:
             if schedule.get("id") == schedule_id:
                 schedule["status"] = new_status
                 return self.save_schedules()
-
-        _ = await self.api.post(
-            f"/api/shedules/{schedule_id}/update-status", data={"status": new_status}
-        )
 
         print(f"Schedule with ID {schedule_id} not found.")
         return False
