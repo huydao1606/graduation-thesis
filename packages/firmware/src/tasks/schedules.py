@@ -93,17 +93,17 @@ class Schedules:
                                 await uasyncio.sleep(1) # Nghỉ 1 nhịp cho êm máy
 
                                 print("[SYSTEM] Đang lật khay thu hồi thuốc dư...")
-                                self.states.check_count = 0  # Reset bộ đếm cảm biến 2
+                                # Lưu đếm ban đầu (không reset về 0)
+                                initial_check_count = self.states.check_count 
                                 await self.stepper.discard.move(step_90_do, delay_ms=2)
                                 
-                                # Chờ 3 giây để thuốc (nếu còn) rớt qua mắt thần
                                 await uasyncio.sleep(3) 
                                 
                                 print("[SYSTEM] Trả khay lật về vị trí cũ...")
                                 await self.stepper.discard.move(-step_90_do, delay_ms=2)
 
-                                # Đánh giá tình trạng uống thuốc
-                                missed_pills = self.states.check_count
+                                # ĐÁNH GIÁ SỐ THUỐC MÓT BẰNG PHÉP TRỪ (Delta)
+                                missed_pills = self.states.check_count - initial_check_count
                                 if missed_pills > 0:
                                     notify_title = "Cảnh báo quên uống thuốc"
                                     notify_body = f"Bệnh nhân đã bỏ mót {missed_pills} viên thuốc ở khay!"
@@ -115,7 +115,6 @@ class Schedules:
                                     notify_level = "info"
                                     print(f"✅ [THÀNH CÔNG] {notify_body}")
 
-                                # Gửi API và lưu trạng thái Thành công
                                 _ = await self.api.post(
                                     "/api/notifications/send",
                                     data={
@@ -131,7 +130,6 @@ class Schedules:
                             else:
                                 print("\n[SYSTEM] Phát hiện thiếu thuốc/kẹt thuốc! GIỮ ĐÓNG NGĂN KÉO.")
                                 
-                                # Lật khay để xả bỏ liều thuốc không hoàn chỉnh
                                 print("[SYSTEM] Đang lật khay để xả bỏ các viên thuốc lẻ tẻ xuống khoang chứa...")
                                 await self.stepper.discard.move(step_90_do, delay_ms=2)
                                 
@@ -140,7 +138,6 @@ class Schedules:
                                 print("[SYSTEM] Đã dọn sạch khay! Trả khay về vị trí cũ...")
                                 await self.stepper.discard.move(-step_90_do, delay_ms=2)
 
-                                # Gửi API và lưu trạng thái Thất bại (Lỗi kẹt thuốc)
                                 _ = await self.api.post(
                                     "/api/notifications/send",
                                     data={
@@ -157,12 +154,8 @@ class Schedules:
             except Exception as e:
                 print(f"Error in schedule loop: {e}")
 
-            now_after_task = get_current_time()
-            seconds_to_next_minute = 60 - now_after_task[5]
-            if seconds_to_next_minute <= 0:
-                seconds_to_next_minute = 60
-
-            await uasyncio.sleep(seconds_to_next_minute)
+            # CÁCH CHUẨN: Ngủ 1 giây để quét thời gian liên tục mà không bao giờ bị lệch!
+            await uasyncio.sleep(1)
 
     @classmethod
     def create(cls) -> "Schedules":
