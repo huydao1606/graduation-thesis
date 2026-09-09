@@ -5,7 +5,6 @@ import type { Peripheral } from 'react-native-ble-manager'
 import { toast } from '@rozumari/ui/components/toast'
 import * as Location from 'expo-location'
 import * as React from 'react'
-import BleManager from 'react-native-ble-manager'
 
 import {
   BLE_RX_UUID,
@@ -20,7 +19,8 @@ export const ACTION_CODES = {
   SET_WIFI_RES: 2,
   SET_UTC_RES: 3,
   SET_LANGUAGE_RES: 4,
-  SEND_DEVICE_INFO: 5,
+  SET_SYNC_TIME_RES: 5,
+  SEND_DEVICE_INFO: 6,
 } as const
 
 export const STATUS_CODES = {
@@ -31,6 +31,7 @@ export const STATUS_CODES = {
 interface DeviceInfo {
   utc: number
   language: 'en' | 'vi'
+  syncTime: { hours: number; minutes: number }
 }
 
 interface BLEContextType {
@@ -63,7 +64,11 @@ const parseDeviceInfo = (statusCode: number): DeviceInfo => {
   const langBit = (statusCode >> 4) & 0x01
   const language: 'en' | 'vi' = langBit === 1 ? 'vi' : 'en'
 
-  return { utc, language }
+  // 11 bit sync timestamp (bits 5-15): [hours (5b)][minutes (6b)]
+  const hours = (statusCode >> 5) & 0x1f
+  const minutes = (statusCode >> 10) & 0x3f
+
+  return { utc, language, syncTime: { hours, minutes } }
 }
 
 const BLEContext = React.createContext<BLEContextType | null>(null)
@@ -109,55 +114,17 @@ export function BLEProvider({ children }: { children: React.ReactNode }) {
     const actionCode = (byteValue >> 5) & 0x07
     const statusCode = byteValue & 0x1f
 
-    console.log(
-      `Received Byte: 0x${byteValue.toString(16).toUpperCase()} | Action: ${actionCode}, Status: ${statusCode}`
-    )
-
     if (actionCode === ACTION_CODES.PONG) toast.success('Pong received!')
-    else if (actionCode === ACTION_CODES.SEND_DEVICE_INFO) {
-      const parsedInfo = parseDeviceInfo(statusCode)
-      setDeviceInfo(parsedInfo)
-    }
-
     for (const handler of byteHandlersRef.current)
       handler(actionCode, statusCode)
   }, [])
-
-  const startNotificationListener = React.useCallback(
-    async (deviceId: string) => {
-      try {
-        if (notificationListenerRef.current) {
-          notificationListenerRef.current.remove()
-          notificationListenerRef.current = null
-        }
-
-        await BleManager.startNotification(
-          deviceId,
-          BLE_SERVICE_UUID,
-          BLE_TX_UUID
-        )
-
-        notificationListenerRef.current =
-          BleManager.onDidUpdateValueForCharacteristic((data) => {
-            if (data.peripheral === deviceId && data.value) {
-              const rawArray = Array.isArray(data.value)
-                ? data.value
-                : [...(data.value as Uint8Array)]
-
-              for (const byteVal of rawArray) handleByteNotification(byteVal)
-            }
-          })
-      } catch (error) {
-        console.error('Failed to start notification:', error)
-      }
-    },
-    [handleByteNotification]
-  )
 
   React.useEffect(() => {
     if (isExpoGo) return
 
     void (async () => {
+      const { default: BleManager } = await import('react-native-ble-manager')
+
       const isLocationEnabled = await Location.hasServicesEnabledAsync()
       if (!isLocationEnabled)
         try {
@@ -190,8 +157,8 @@ export function BLEProvider({ children }: { children: React.ReactNode }) {
 
       try {
         await BleManager.scan({ serviceUUIDs: [], seconds: 10 })
-      } catch (error) {
-        console.error('Scan error:', error)
+      } catch {
+        // noop
       }
     })()
 
@@ -202,7 +169,9 @@ export function BLEProvider({ children }: { children: React.ReactNode }) {
   }, [])
 
   const handleConnect = React.useCallback(async () => {
-    if (!selectedDevice) return
+    if (!selectedDevice || isExpoGo) return
+
+    const { default: BleManager } = await import('react-native-ble-manager')
 
     try {
       setIsConnecting(true)
@@ -212,25 +181,71 @@ export function BLEProvider({ children }: { children: React.ReactNode }) {
 
       try {
         await BleManager.requestMTU(selectedDevice, 512)
-      } catch (error) {
-        console.warn('Cannot request MTU:', error)
+      } catch {
+        // noop
+      }
+
+      const startNotificationListener = async (deviceId: string) => {
+        try {
+          if (notificationListenerRef.current) {
+            notificationListenerRef.current.remove()
+            notificationListenerRef.current = null
+          }
+
+          await BleManager.startNotification(
+            deviceId,
+            BLE_SERVICE_UUID,
+            BLE_TX_UUID
+          )
+
+          notificationListenerRef.current =
+            BleManager.onDidUpdateValueForCharacteristic((data) => {
+              if (data.peripheral === deviceId && data.value) {
+                const rawArray = Array.isArray(data.value)
+                  ? data.value
+                  : [...(data.value as Uint8Array)]
+
+                if (rawArray.length >= 3) {
+                  const [actionByte, statusByte1, statusByte2] = rawArray
+                  if (
+                    actionByte === undefined ||
+                    statusByte1 === undefined ||
+                    statusByte2 === undefined
+                  )
+                    return
+
+                  const actionCode = (actionByte >> 5) & 0x07
+                  const statusCode16Bit = statusByte1 | (statusByte2 << 8)
+
+                  if (actionCode !== ACTION_CODES.SEND_DEVICE_INFO) return
+
+                  const parsedInfo = parseDeviceInfo(statusCode16Bit)
+                  setDeviceInfo(parsedInfo)
+                } else if (rawArray.length === 1)
+                  handleByteNotification(rawArray[0] ?? 0)
+              }
+            })
+        } catch {
+          // noop
+        }
       }
 
       await startNotificationListener(selectedDevice)
 
       setIsConnected(true)
       toast.success('Connected to device!')
-    } catch (error) {
-      console.error('Connection error:', error)
+    } catch {
       setIsConnected(false)
       toast.error('Connection failed!')
     } finally {
       setIsConnecting(false)
     }
-  }, [selectedDevice, startNotificationListener])
+  }, [selectedDevice, handleByteNotification])
 
   const handleDisconnect = React.useCallback(async () => {
-    if (!selectedDevice) return
+    if (!selectedDevice || isExpoGo) return
+
+    const { default: BleManager } = await import('react-native-ble-manager')
 
     try {
       notificationListenerRef.current?.remove()
@@ -246,7 +261,10 @@ export function BLEProvider({ children }: { children: React.ReactNode }) {
 
   const sendBleCommand = React.useCallback(
     async (actionName: string, payloadObj: Record<string, unknown> = {}) => {
-      if (!selectedDevice || !isConnected || !actionName.trim()) return
+      if (!selectedDevice || !isConnected || !actionName.trim() || isExpoGo)
+        return
+
+      const { default: BleManager } = await import('react-native-ble-manager')
 
       try {
         const cleanAction = removeVietnameseTones(actionName.trim())
@@ -269,8 +287,7 @@ export function BLEProvider({ children }: { children: React.ReactNode }) {
           bytesData,
           500
         )
-      } catch (error) {
-        console.error('Write error:', error)
+      } catch {
         toast.error('Failed to send BLE command!')
       }
     },

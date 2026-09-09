@@ -21,16 +21,6 @@ export default function TabsProfileSettingsScreen() {
       </View>
 
       <View className='gap-2'>
-        <Typography variant='h3'>App Build Number</Typography>
-        <Typography>
-          {Constants.default.expoConfig?.android?.versionCode ||
-            Constants.default.expoConfig?.ios?.buildNumber ||
-            Constants.default.expoConfig?.extra?.buildNumber ||
-            'N/A'}
-        </Typography>
-      </View>
-
-      <View className='gap-2'>
         <Typography variant='h3'>App Version</Typography>
         <Typography>{Constants.default.expoConfig?.version}</Typography>
       </View>

@@ -33,8 +33,8 @@ class Streaming:
 
         try:
             data = ujson.loads(line)
-        except ValueError as e:
-            print(f"Failed to parse JSON: {e}")
+            print(f"Received streaming payload: {data}")
+        except Exception:  # noqa: BLE001
             return
 
         action = data.get("action")
@@ -45,6 +45,7 @@ class Streaming:
             led.value(int(payload))
 
         elif action == "sync_schedule":
+            print("Syncing schedule...")
             await self.sync_schedule.sync()
 
     async def start(self) -> None:
@@ -74,10 +75,7 @@ class Streaming:
         :return: None
         :raises Exception: Internal stream or connection exceptions are caught, logged, and handled internally.
         """
-        print(
-            "[STARTUP] Streaming task initiated...\n",
-            {"endpoint": "/api/devices/subscribe"},
-        )
+        print("\n[STARTUP] Streaming task initiated...\n")
 
         retry_delay = 2
         max_delay = 60
@@ -93,9 +91,7 @@ class Streaming:
             except Exception as e:  # noqa: BLE001
                 print(f"Streaming error: {e}")
 
-            print(f"Reconnecting in {retry_delay} seconds...")
             await uasyncio.sleep(retry_delay)
-
             retry_delay = min(retry_delay * 2, max_delay)
 
     @classmethod

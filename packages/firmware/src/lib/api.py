@@ -1,7 +1,7 @@
 import uasyncio
 import urequests
 
-from lib.config import load_config
+from lib.config import Config
 
 
 class Api:
@@ -11,7 +11,7 @@ class Api:
     base_headers: dict
 
     def __init__(self) -> None:
-        config = load_config()
+        config = Config.create()
         api_config: dict = config.get("api", {})
 
         self.base_url = api_config.get("url", "")

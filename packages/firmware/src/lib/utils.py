@@ -1,6 +1,6 @@
 import time
 
-from lib.config import load_config
+from lib.config import Config
 
 
 def get_current_time() -> time.struct_time:
@@ -10,8 +10,7 @@ def get_current_time() -> time.struct_time:
     Returns:
         time.struct_time: The current local time adjusted for UTC offset.
     """
-    config = load_config()
-
+    config = Config.create()
     utc_offset = config.get("utc", 0)
 
     current_time = time.time() + (utc_offset * 3600)

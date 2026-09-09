@@ -1,13 +1,13 @@
 from machine import PWM, SPI, Pin
 
-from lib.config import load_config
+from lib.config import Config
 
 
 class Pins:
     __instance: Pins | None = None
 
     def __init__(self):
-        config = load_config()
+        config = Config.create()
         pins = config.get("pins", {})
 
         self.led = Pin(pins.get("led"), Pin.OUT)

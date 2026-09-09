@@ -1,14 +1,18 @@
 import ujson
 
+from lib.api import Api
+
 
 class Schedule:
     __instance: Schedule | None = None
 
     _schedules: list[dict]
+    api: Api
 
-    def __init__(self, file_path: str = "/data/schedules.json") -> None:
+    def __init__(self, file_path: str) -> None:
         self.path = file_path
         self._schedules = []
+        self.api = Api.create()
 
     def load_schedules(self) -> bool:
         """
@@ -37,6 +41,26 @@ class Schedule:
         """
         return self._schedules
 
+    async def update_status(self, schedule_id: str, new_status: str) -> bool:
+        """
+        Update the status of a specific schedule by its ID.
+
+        :param schedule_id: The ID of the schedule to update.
+        :param new_status: The new status to set for the schedule.
+        :return: True if update was successful, False otherwise.
+        """
+        for schedule in self._schedules:
+            if schedule.get("id") == schedule_id:
+                schedule["status"] = new_status
+                return self.save_schedules()
+
+        _ = await self.api.post(
+            f"/api/shedules/{schedule_id}/update-status", data={"status": new_status}
+        )
+
+        print(f"Schedule with ID {schedule_id} not found.")
+        return False
+
     def save_schedules(self, schedules: list[dict] | None = None) -> bool:
         """
         Save the schedules to the JSON persistence store.
@@ -58,5 +82,5 @@ class Schedule:
     @classmethod
     def create(cls, file_path: str = "/data/schedules.json") -> Schedule:
         if cls.__instance is None:
-            cls.__instance = Schedule(file_path)
+            cls.__instance = cls(file_path)
         return cls.__instance

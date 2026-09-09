@@ -1,7 +1,7 @@
 import uasyncio
 
 from lib.api import Api
-from lib.config import load_config
+from lib.config import Config
 from lib.schedule import Schedule
 from lib.utils import get_current_time
 
@@ -14,7 +14,7 @@ class SyncSchedule:
     sync_time: str
 
     def __init__(self) -> None:
-        config = load_config()
+        config = Config.create()
         self.sync_time = config.get("sync_time", "04:00:00")
 
         self.api = Api.create()
@@ -53,7 +53,7 @@ class SyncSchedule:
         )
         last_synced_date = None
 
-        sync_hour, sync_minute, __ = map(int, self.sync_time.split(":"))
+        sync_hour, sync_minute = map(int, self.sync_time.split(":"))
 
         while True:
             try:

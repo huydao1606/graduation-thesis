@@ -3,80 +3,49 @@ from machine import Pin
 
 from lib.pins import Pins
 
-HALF_STEP = [
-    [1, 0, 0, 0],
+FULL_STEP = [
     [1, 1, 0, 0],
-    [0, 1, 0, 0],
     [0, 1, 1, 0],
-    [0, 0, 1, 0],
     [0, 0, 1, 1],
-    [0, 0, 0, 1],
     [1, 0, 0, 1],
 ]
 
 
 class StepperMotor:
-    __instance: StepperMotor | None = None
-
-    pins: list[Pin]
-
     def __init__(self, pins: list[Pin]) -> None:
         self.pins = pins
+        self.step_index = 0
         self.off()
 
     def off(self) -> None:
-        """
-        Deenergize all stepper motor coils by pulling pin values LOW to conserve power.
-
-        :return: None
-        """
-
         for p in self.pins:
             p.value(0)
 
     async def move(self, steps: int, delay_ms: int = 2) -> None:
-        """
-        Rotate the stepper motor by a specified number of steps using half-step commutation.
-
-        Half-Step Commutation Mechanics:
-            - Utilizes an 8-state transition table (`HALF_STEP`) to alternate single-coil and dual-coil excitation.
-            - Doubles the step resolution and smooths rotation compared to full-step mode.
-            - Direction is determined by the sign of steps (+1 for forward, -1 for reverse).
-
-        :param steps: Number of steps to move (positive for forward direction, negative for reverse).
-        :param delay_ms: Delay duration in milliseconds between sequential step transitions.
-        :return: None
-        """
         direction = 1 if steps > 0 else -1
-        step_index = 0
 
         for _ in range(abs(steps)):
-            for i in range(4):
-                self.pins[i].value(HALF_STEP[step_index][i])
+            self.step_index = (self.step_index + direction) % 4
 
-            step_index = (step_index + direction) % 8
+            for i in range(4):
+                self.pins[i].value(FULL_STEP[self.step_index][i])
 
             await uasyncio.sleep_ms(delay_ms)
 
         self.off()
 
-    @classmethod
-    def create(cls, pins: list[Pin]) -> StepperMotor:
-        if cls.__instance is None:
-            cls.__instance = StepperMotor(pins)
-        return cls.__instance
-
 
 class Stepper:
     __instance: Stepper | None = None
 
-    def __init__(
-        self,
-    ) -> None:
+    def __init__(self) -> None:
         pins = Pins.create()
+        self.discard = StepperMotor(pins.stepper_discard)
+        self.drawer = StepperMotor(pins.stepper_drawer)
 
-        self.discard = StepperMotor.create(pins.stepper_discard)
-        self.drawer = StepperMotor.create(pins.stepper_drawer)
+    def off_all(self) -> None:
+        self.discard.off()
+        self.drawer.off()
 
     @classmethod
     def create(cls) -> Stepper:

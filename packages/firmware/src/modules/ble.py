@@ -2,7 +2,7 @@ import uasyncio
 import ubluetooth
 import ujson
 
-from lib.config import load_config
+from lib.config import Config
 from tasks.ble_handler import BLEHandler
 
 _CONFIG_SERVICE_UUID = ubluetooth.UUID("ffaa5bd2-45cd-4512-bf35-c5d4276a0c7a")
@@ -19,7 +19,7 @@ class BLE:
     _config: dict | None = None
 
     def __init__(self) -> None:
-        config = load_config()
+        config = Config.create()
         self._config = config.get("device", {})
 
         self.rx_buffer = bytearray()
@@ -131,20 +131,28 @@ class BLE:
             print("Cannot send: Not connected")
             return
 
-        packet_byte = bytes([((action & 0x07) << 5) | (status & 0x1F)])
+        if status > 31 or action == 6:  # ACTION_SEND_DEVICE_INFO = 6
+            action_byte = (action & 0x07) << 5
+            low_byte = status & 0xFF
+            high_byte = (status >> 8) & 0xFF
+            packet_bytes = bytes([action_byte, low_byte, high_byte])
+            packet_type = "3 Bytes"
+        else:
+            packet_bytes = bytes([((action & 0x07) << 5) | (status & 0x1F)])
+            packet_type = "1 Byte"
 
         async with self.send_lock:
-            self.ble.gatts_write(self.handle_tx, packet_byte)
+            self.ble.gatts_write(self.handle_tx, packet_bytes)
             await uasyncio.sleep_ms(10)
 
             try:
-                self.ble.gatts_notify(self.conn_handle, self.handle_tx, packet_byte)  # pyright: ignore[reportCallIssue]
+                self.ble.gatts_notify(self.conn_handle, self.handle_tx, packet_bytes)  # pyright: ignore[reportCallIssue]
             except TypeError:
                 self.ble.gatts_notify(self.conn_handle, self.handle_tx)  # pyright: ignore[reportArgumentType]
 
             await uasyncio.sleep_ms(30)
             print(
-                f"Sent 1 Byte: 0x{packet_byte.hex().upper()} (Action: {action}, Status: {status})"
+                f"Sent {packet_type}: 0x{packet_bytes.hex().upper()} (Action: {action}, Status/Value: {status})"
             )
 
     def stop(self) -> None:

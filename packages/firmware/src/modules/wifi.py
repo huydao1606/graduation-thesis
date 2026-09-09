@@ -1,7 +1,7 @@
 import network
 import uasyncio
 
-from lib.config import load_config
+from lib.config import Config
 
 
 class WiFi:
@@ -11,7 +11,7 @@ class WiFi:
     device: dict | None = None
 
     def __init__(self):
-        config = load_config()
+        config = Config.create()
         self.wifi = config.get("wifi")
         self.device = config.get("device")
 

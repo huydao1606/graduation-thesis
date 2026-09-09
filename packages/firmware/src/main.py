@@ -2,7 +2,7 @@ import ntptime
 import uasyncio
 from machine import Pin
 
-from lib.config import load_config
+from lib.config import Config
 from lib.pins import Pins
 from lib.schedule import Schedule
 from modules.ble import BLE
@@ -47,7 +47,7 @@ class Bootstrap:
             print("Config mode stopped.")
 
     async def _normal_mode(self) -> None:
-        _ = load_config(force=True)
+        _ = Config.create(force=True)
 
         self.wifi = WiFi.create()
         self.schedule = Schedule.create()
@@ -86,9 +86,10 @@ class Bootstrap:
             await self._normal_mode()
 
 
-bootstrap = Bootstrap()
+if __name__ == "__main__":
+    bootstrap = Bootstrap()
 
-try:
-    uasyncio.run(bootstrap.start())
-except KeyboardInterrupt:
-    print("Program interrupted by user.")
+    try:
+        uasyncio.run(bootstrap.start())
+    except KeyboardInterrupt:
+        print("Program interrupted by user.")
