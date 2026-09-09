@@ -61,7 +61,7 @@ class Schedules:
                             schedule_success = True
                             failed_slot = []
 
-                            # --- BƯỚC 1: NHẢ THUỐC BẰNG SERVO ---
+                            # --- BƯỚC 1: NHẢ THUỐC (CẢM BIẾN 1 ĐẢM NHẬN Ở SERVO.PY) ---
                             for item in items:
                                 slot = item.get("slot")
                                 quantity = item.get("quantity", 1)
@@ -78,8 +78,8 @@ class Schedules:
                                 else:
                                     print(f"[INFO] Successfully dispensed slot {slot}")
 
-                            # --- BƯỚC 2: QUY TRÌNH CƠ KHÍ & BÁO CÁO API ---
-                            step_90_do = 512  # Số bước quay 90 độ (Chế độ Full-Step)
+                            # --- BƯỚC 2: QUY TRÌNH CƠ KHÍ & CẢM BIẾN 2 ---
+                            step_90_do = 512 
 
                             if schedule_success:
                                 print("[SYSTEM] Đang mở ngăn kéo cho người dùng lấy thuốc...")
@@ -90,11 +90,11 @@ class Schedules:
                                 
                                 print("[SYSTEM] Hết giờ! Đang đóng ngăn kéo...")
                                 await self.stepper.drawer.move(-step_90_do, delay_ms=2)
-                                await uasyncio.sleep(1) # Nghỉ 1 nhịp cho êm máy
+                                await uasyncio.sleep(1) 
 
+                                # FIX TẠI ĐÂY: Ép cảm biến số 2 về 0 trước khi lật khay
                                 print("[SYSTEM] Đang lật khay thu hồi thuốc dư...")
-                                # Lưu đếm ban đầu (không reset về 0)
-                                initial_check_count = self.states.check_count 
+                                self.states.check_count = 0  
                                 await self.stepper.discard.move(step_90_do, delay_ms=2)
                                 
                                 await uasyncio.sleep(3) 
@@ -102,8 +102,8 @@ class Schedules:
                                 print("[SYSTEM] Trả khay lật về vị trí cũ...")
                                 await self.stepper.discard.move(-step_90_do, delay_ms=2)
 
-                                # ĐÁNH GIÁ SỐ THUỐC MÓT BẰNG PHÉP TRỪ (Delta)
-                                missed_pills = self.states.check_count - initial_check_count
+                                # ĐÁNH GIÁ SỐ THUỐC BỎ MÓT BẰNG CẢM BIẾN 2
+                                missed_pills = self.states.check_count
                                 if missed_pills > 0:
                                     notify_title = "Cảnh báo quên uống thuốc"
                                     notify_body = f"Bệnh nhân đã bỏ mót {missed_pills} viên thuốc ở khay!"
@@ -130,7 +130,7 @@ class Schedules:
                             else:
                                 print("\n[SYSTEM] Phát hiện thiếu thuốc/kẹt thuốc! GIỮ ĐÓNG NGĂN KÉO.")
                                 
-                                print("[SYSTEM] Đang lật khay để xả bỏ các viên thuốc lẻ tẻ xuống khoang chứa...")
+                                print("[SYSTEM] Đang lật khay để xả bỏ liều lỗi xuống khoang chứa...")
                                 await self.stepper.discard.move(step_90_do, delay_ms=2)
                                 
                                 await uasyncio.sleep(3) 
@@ -144,7 +144,7 @@ class Schedules:
                                         "scheduleId": schedule_id,
                                         "level": "error",
                                         "title": "Lỗi nhả thuốc - Đã hủy liều",
-                                        "body": f"Lịch {schedule_id} bị lỗi cơ khí/kẹt thuốc. Đã xả bỏ liều uống không hoàn chỉnh.",
+                                        "body": f"Lịch {schedule_id} bị lỗi cơ khí/kẹt thuốc. Đã tự xả bỏ liều uống không an toàn.",
                                         "payload": {"failed_slots": failed_slot},
                                     },
                                 )
@@ -154,7 +154,7 @@ class Schedules:
             except Exception as e:
                 print(f"Error in schedule loop: {e}")
 
-            # CÁCH CHUẨN: Ngủ 1 giây để quét thời gian liên tục mà không bao giờ bị lệch!
+            # FIX TẠI ĐÂY: Xóa tính toán cồng kềnh, chỉ ngủ 1s canh nhịp, không bao giờ lệch!
             await uasyncio.sleep(1)
 
     @classmethod
