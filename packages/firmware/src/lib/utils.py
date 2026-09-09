@@ -1,6 +1,6 @@
 import time
 
-from lib.config import load_config
+from lib.config import Config
 
 
 def get_current_time() -> time.struct_time:
@@ -10,16 +10,25 @@ def get_current_time() -> time.struct_time:
     Returns:
         time.struct_time: The current local time adjusted for UTC offset.
     """
-    config = load_config()
-
+    config = Config.create()
     utc_offset = config.get("utc", 0)
 
     current_time = time.time() + (utc_offset * 3600)
     return time.localtime(current_time)
 
 
-def rgb(r: int, g: int, b: int) -> int:
-    return ((r & 0xF8) << 8) | ((g & 0xFC) << 3) | (b >> 3)
+def rgb(r: int, g: int, b: int, invert: bool = False) -> int:
+    if invert:
+        val = ((b & 0xF8) << 8) | ((g & 0xFC) << 3) | (r >> 3)
+    else:
+        val = ((r & 0xF8) << 8) | ((g & 0xFC) << 3) | (b >> 3)
+
+    return val
+
+
+def swap_color(color: int) -> int:
+    # Đảo 2 byte để framebuf hiểu đúng màu RGB565
+    return ((color & 0xFF) << 8) | ((color >> 8) & 0xFF)
 
 
 def clamp(value: int, _min: int, _max: int) -> int:

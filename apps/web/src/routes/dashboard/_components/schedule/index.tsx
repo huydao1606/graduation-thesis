@@ -48,6 +48,7 @@ export const Schedules: React.FC<{
           startDate={query.startDate}
           endDate={query.endDate}
           setWeek={setQuery}
+          deviceId={deviceId}
         />
 
         <ScheduleSkeleton />
@@ -60,6 +61,7 @@ export const Schedules: React.FC<{
         startDate={query.startDate}
         endDate={query.endDate}
         setWeek={setQuery}
+        deviceId={deviceId}
       />
 
       {data?.data.length === 0 ? (

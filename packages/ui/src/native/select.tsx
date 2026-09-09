@@ -13,15 +13,15 @@ import {
 
 import { cn } from '@/lib/utils'
 import { Button } from '@/native/button'
-import { Typography } from '@/native/typography'
+import { Typography, TypographyContext } from '@/native/typography'
 
 const { height: SCREEN_HEIGHT } = Dimensions.get('window')
 
 interface SelectContextValue<TMultiple extends boolean = false> {
   open: boolean
   setOpen: (open: boolean) => void
-  value: TMultiple extends true ? string[] : string
-  onValueChange: (value: TMultiple extends true ? string[] : string) => void
+  value?: TMultiple extends true ? string[] : string
+  onValueChange?: (value: TMultiple extends true ? string[] : string) => void
   multiple?: TMultiple
 
   translateY: Animated.Value
@@ -36,29 +36,64 @@ const useSelectContext = () => {
   return context
 }
 
+type SelectProps<TMultiple extends boolean = false> = React.PropsWithChildren<{
+  value?: TMultiple extends true ? string[] : string
+  defaultValue?: TMultiple extends true ? string[] : string
+  onValueChange?: (value: TMultiple extends true ? string[] : string) => void
+  multiple?: TMultiple
+}>
+
 function Select<TMultiple extends boolean = false>({
   children,
-  ...props
-}: React.PropsWithChildren<
-  Omit<SelectContextValue<TMultiple>, 'open' | 'setOpen' | 'translateY'>
->) {
+  value: valueProp,
+  defaultValue,
+  onValueChange,
+  multiple,
+}: SelectProps<TMultiple>) {
   const [open, setOpen] = React.useState(false)
+  // Quản lý internal state cho trường hợp Uncontrolled
+  const [uncontrolledValue, setUncontrolledValue] = React.useState<
+    (TMultiple extends true ? string[] : string) | undefined
+  >(defaultValue)
+
+  const isControlled = valueProp !== undefined
+  const currentValue = isControlled ? valueProp : uncontrolledValue
+
   // oxlint-disable-next-line react/refs
   const translateY = React.useRef(new Animated.Value(SCREEN_HEIGHT)).current
 
+  const handleValueChange = React.useCallback(
+    (newValue: TMultiple extends true ? string[] : string) => {
+      if (!isControlled) setUncontrolledValue(newValue)
+      onValueChange?.(newValue)
+    },
+    [isControlled, onValueChange]
+  )
+
   const memoizedValue = React.useMemo(
-    () => ({ open, setOpen, translateY, ...props }),
-    [open, setOpen, translateY, props]
+    () => ({
+      open,
+      setOpen,
+      translateY,
+      value: currentValue,
+      onValueChange: handleValueChange,
+      multiple,
+    }),
+    [open, setOpen, translateY, currentValue, handleValueChange, multiple]
   ) as never
 
+  // oxlint-disable-next-line react/refs
   return <SelectContext value={memoizedValue}>{children}</SelectContext>
 }
 
 function SelectTrigger({
   className,
   children,
+  invalid,
   ...props
-}: React.ComponentProps<typeof Pressable>) {
+}: React.ComponentProps<typeof Pressable> & {
+  invalid?: boolean
+}) {
   const { setOpen, translateY } = useSelectContext()
 
   const handlePress = React.useCallback(() => {
@@ -77,7 +112,9 @@ function SelectTrigger({
       data-slot='select-trigger'
       onPress={handlePress}
       className={cn(
-        'h-10 flex-row items-center justify-between gap-2 rounded-lg border border-input bg-background px-3 transition-colors active:opacity-80',
+        'flex h-10 w-fit flex-row items-center justify-between gap-1.5 rounded-lg border border-input bg-transparent py-2 pr-2 pl-2.5 outline-none select-none focus:border-ring focus:ring-3 focus:ring-ring/50 dark:bg-input/30 dark:active:bg-input/50',
+        invalid &&
+          'border-destructive ring-3 ring-destructive/20 dark:border-destructive/50 dark:ring-destructive/40',
         className
       )}
       {...props}
@@ -93,16 +130,37 @@ function SelectTrigger({
 function SelectValue({
   placeholder,
   className,
+  items,
   ...props
-}: React.ComponentProps<typeof Typography> & { placeholder?: string }) {
+}: React.ComponentProps<typeof Typography> & {
+  placeholder?: string
+  items?: Record<string, string> | { label: string; value: string }[]
+}) {
   const { value, multiple } = useSelectContext()
 
   const hasValue = multiple
     ? Array.isArray(value) && value.length > 0
     : Boolean(value)
 
-  const displayValue =
-    multiple && Array.isArray(value) ? value.join(', ') : value
+  const getLabel = (valKey: string) => {
+    if (!items) return valKey
+
+    if (Array.isArray(items)) {
+      const found = items.find((item) => item.value === valKey)
+      return found ? found.label : valKey
+    }
+
+    return items[valKey] ?? valKey
+  }
+
+  const getDisplayValue = () => {
+    if (!hasValue) return placeholder
+
+    if (multiple && Array.isArray(value))
+      return value.map((v) => getLabel(v)).join(', ')
+
+    return getLabel(value as string)
+  }
 
   return (
     <Typography
@@ -115,7 +173,7 @@ function SelectValue({
       )}
       {...props}
     >
-      {hasValue ? displayValue : placeholder}
+      {getDisplayValue()}
     </Typography>
   )
 }
@@ -216,7 +274,7 @@ function SelectItem({
 
       onValueChange?.(nextValues as never)
     } else {
-      onValueChange?.(itemValue)
+      onValueChange?.(itemValue as never)
       setOpen(false)
     }
   }, [
@@ -229,6 +287,11 @@ function SelectItem({
     props.disabled,
   ])
 
+  const selectTextClassName = cn(
+    'flex-1 text-sm font-normal text-popover-foreground',
+    isSelected && 'font-medium'
+  )
+
   return (
     <Button
       size='lg'
@@ -237,14 +300,15 @@ function SelectItem({
       className={cn('justify-between', isSelected && 'bg-accent/50', className)}
       {...props}
     >
-      <Typography
-        className={cn(
-          'text-sm font-normal text-popover-foreground',
-          isSelected && 'font-medium'
-        )}
-      >
-        {children as React.ReactNode}
-      </Typography>
+      {typeof children === 'string' || typeof children === 'number' ? (
+        <Typography className={selectTextClassName} numberOfLines={1}>
+          {children}
+        </Typography>
+      ) : (
+        <TypographyContext value={selectTextClassName}>
+          {children as React.ReactNode}
+        </TypographyContext>
+      )}
       {isSelected && <CheckIcon className='size-4 text-accent-foreground' />}
     </Button>
   )

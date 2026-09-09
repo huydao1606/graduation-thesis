@@ -1,62 +1,47 @@
 import { Button } from '@rozumari/ui/components/button'
 import { Typography } from '@rozumari/ui/components/typography'
 import * as Linking from 'expo-linking'
-import { useEffect, useState } from 'react'
-import { View } from 'react-native'
+import { View, ScrollView } from 'react-native'
 
-import { isExpoGo } from '@/lib/constants'
+import { useBLE, BLEProvider } from '@/components/profile/config/_context'
+import { BLEConnection } from '@/components/profile/config/ble-connection'
+import { LanguageConfig } from '@/components/profile/config/language-config'
+import { SyncTimeConfig } from '@/components/profile/config/sync-time-config'
+import { UtcConfig } from '@/components/profile/config/utc-config'
+import { WifiConfig } from '@/components/profile/config/wifi-config'
 
-export default function ProfileConfigScreen() {
-  const [isBluetoothAvailable, setIsBluetoothAvailable] =
-    useState<boolean>(false)
+function ConfigContent() {
+  const { isRequirementsMet, deviceInfo } = useBLE()
 
-  useEffect(() => {
-    if (isExpoGo) return
-
-    let isMounted = true
-
-    void (async () => {
-      if (!isMounted) return
-
-      const { default: BleManager } = await import('react-native-ble-manager')
-
-      await BleManager.start({ showAlert: false })
-      console.log('BLE Manager started')
-
-      try {
-        await BleManager.enableBluetooth()
-        setIsBluetoothAvailable(true)
-      } catch {
-        setIsBluetoothAvailable(false)
-      }
-
-      await BleManager.scan()
-      console.log('Scanning for BLE devices...')
-
-      const devices = await BleManager.getDiscoveredPeripherals()
-      console.log('Discovered devices:', devices)
-    })()
-
-    return () => {
-      isMounted = false
-    }
-  }, [])
-
-  if (!isBluetoothAvailable)
+  if (!isRequirementsMet)
     return (
       <View className='flex-1 items-center justify-center gap-2 p-4'>
-        <Typography variant='h3'>Bluetooth is not available</Typography>
-        <Typography className='text-center text-muted-foreground'>
-          This feature requires Bluetooth to be enabled. Please turn on
-          Bluetooth and try again.
-        </Typography>
+        <Typography variant='h3'>Bluetooth & Location Required</Typography>
         <Button onPress={() => Linking.openSettings()}>Open Settings</Button>
       </View>
     )
 
+  const configKey = deviceInfo
+    ? `${deviceInfo.utc}-${deviceInfo.language}`
+    : 'default'
+
   return (
-    <View className='p-4'>
-      <Typography variant='h1'>Device Configuration</Typography>
-    </View>
+    <ScrollView className='p-4' contentContainerClassName='gap-4'>
+      <BLEConnection />
+
+      <LanguageConfig key={`${configKey}-lang`} />
+      <UtcConfig key={`${configKey}-utc`} />
+      <SyncTimeConfig key={`${configKey}-sync`} />
+
+      <WifiConfig />
+    </ScrollView>
+  )
+}
+
+export default function ProfileConfigScreen() {
+  return (
+    <BLEProvider>
+      <ConfigContent />
+    </BLEProvider>
   )
 }

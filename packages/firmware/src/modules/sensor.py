@@ -17,9 +17,20 @@ class Sensor:
         _ = pins.sensor_check.irq(trigger=Pin.IRQ_FALLING, handler=self._check_irq)
 
     def _drop_irq(self, _pin: Pin) -> None:
-        current_time: int = time.ticks_ms()  # pyright: ignore[reportAttributeAccessIssue]
+        """
+        Interrupt Service Routine (ISR) callback for the pill drop sensor pin.
 
-        if time.ticks_diff(current_time, self._states.drop_last_trigger_time) > 80:  # pyright: ignore[reportAttributeAccessIssue]
+        Debounce Mechanism:
+            - Evaluates time delta using `time.ticks_diff()`.
+            - Ignores consecutive noise triggers occurring within an 80ms window (`> 80ms`).
+            - Increments `States.drop_count` and updates timestamp upon valid trigger.
+
+        :param _pin: Pin instance triggering the hardware interrupt.
+        :return: None
+        """
+        current_time: int = time.ticks_ms()
+
+        if time.ticks_diff(current_time, self._states.drop_last_trigger_time) > 80:
             self._states.drop_count += 1
             self._states.drop_last_trigger_time = current_time
             print(
@@ -27,9 +38,20 @@ class Sensor:
             )
 
     def _check_irq(self, _pin: Pin) -> None:
-        current_time: int = time.ticks_ms()  # pyright: ignore[reportAttributeAccessIssue]
+        """
+        Interrupt Service Routine (ISR) callback for the pill stock check sensor pin.
 
-        if time.ticks_diff(current_time, self._states.check_last_trigger_time) > 80:  # pyright: ignore[reportAttributeAccessIssue]
+        Debounce Mechanism:
+            - Evaluates time delta using `time.ticks_diff()`.
+            - Ignores consecutive noise triggers occurring within an 80ms window (`> 80ms`).
+            - Increments `States.check_count` and updates timestamp upon valid trigger.
+
+        :param _pin: Pin instance triggering the hardware interrupt.
+        :return: None
+        """
+        current_time: int = time.ticks_ms()
+
+        if time.ticks_diff(current_time, self._states.check_last_trigger_time) > 80:
             self._states.check_count += 1
             self._states.check_last_trigger_time = current_time
             print(

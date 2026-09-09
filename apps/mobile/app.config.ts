@@ -51,8 +51,16 @@ export default ({ config }: ConfigContext): ExpoConfig => ({
   },
 
   plugins: [
+    '@react-native-community/datetimepicker',
     'expo-font',
     'expo-localization',
+    [
+      'expo-location',
+      {
+        locationAlwaysAndWhenInUsePermission:
+          'Allow $(PRODUCT_NAME) to use your location.',
+      },
+    ],
     'expo-router',
     [
       'expo-secure-store',
