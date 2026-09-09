@@ -7,58 +7,52 @@ from lib.states import States
 
 
 class Sensor:
-    __instance: Sensor | None = None
+    __instance: "Sensor | None" = None
 
     def __init__(self) -> None:
         self._states = States.create()
-
         pins = Pins.create()
-        _ = pins.sensor_drop.irq(trigger=Pin.IRQ_FALLING, handler=self._drop_irq)
-        _ = pins.sensor_check.irq(trigger=Pin.IRQ_FALLING, handler=self._check_irq)
 
-    def _drop_irq(self, _pin: Pin) -> None:
-        """
-        Interrupt Service Routine (ISR) callback for the pill drop sensor pin.
+        # ====================================================================
+        # [SENSOR 1] CẢM BIẾN NHẢ THUỐC (DISPENSE SENSOR)
+        # -> Vị trí vật lý: Lắp dưới cụm 4 phễu Servo.
+        # -> Nhiệm vụ: Đếm số lượng viên thuốc rơi từ các ống tuýp xuống ngăn kéo.
+        # -> Được gọi bởi: servo.py (Để biết đã rớt đủ liều lượng mục tiêu chưa).
+        # ====================================================================
+        self.sensor_dispense = pins.sensor_drop
+        self.sensor_dispense.irq(trigger=Pin.IRQ_FALLING, handler=self._dispense_irq)
 
-        Debounce Mechanism:
-            - Evaluates time delta using `time.ticks_diff()`.
-            - Ignores consecutive noise triggers occurring within an 80ms window (`> 80ms`).
-            - Increments `States.drop_count` and updates timestamp upon valid trigger.
+        # ====================================================================
+        # [SENSOR 2] CẢM BIẾN THU HỒI / KIỂM TRA (LEFTOVER SENSOR)
+        # -> Vị trí vật lý: Lắp ở dưới khe đáy của khay người già lấy thuốc.
+        # -> Nhiệm vụ: Đếm số viên thuốc rớt xuống khoang chứa rác khi lật khay.
+        # -> Được gọi bởi: schedules.py (Để báo cáo số thuốc quên uống lên App).
+        # ====================================================================
+        self.sensor_leftover = pins.sensor_check
+        self.sensor_leftover.irq(trigger=Pin.IRQ_FALLING, handler=self._leftover_irq)
 
-        :param _pin: Pin instance triggering the hardware interrupt.
-        :return: None
-        """
+    def _dispense_irq(self, _pin: Pin) -> None:
+        """Ngắt IRQ cho Cảm biến 1 (Nhả thuốc)"""
         current_time: int = time.ticks_ms()
 
-        # Đổi số 80 thành 400 để "làm ngơ" các tín hiệu dội liên tiếp của cùng 1 viên thuốc
-        if time.ticks_diff(current_time, self._states.drop_last_trigger_time) > 400:
+        # Cơ chế Debounce 80ms: Lọc nhiễu tránh 1 viên thuốc xẹt qua bị đếm thành 2
+        if time.ticks_diff(current_time, self._states.drop_last_trigger_time) > 80:
             self._states.drop_count += 1
             self._states.drop_last_trigger_time = current_time
-            print(f"\n[DROP SENSOR] Pill detected! Total count: {self._states.drop_count}")
+            print(f"\n💊 [SENSOR 1 - NHẢ THUỐC] Đã rớt viên thứ: {self._states.drop_count}")
 
-    def _check_irq(self, _pin: Pin) -> None:
-        """
-        Interrupt Service Routine (ISR) callback for the pill stock check sensor pin.
-
-        Debounce Mechanism:
-            - Evaluates time delta using `time.ticks_diff()`.
-            - Ignores consecutive noise triggers occurring within an 80ms window (`> 80ms`).
-            - Increments `States.check_count` and updates timestamp upon valid trigger.
-
-        :param _pin: Pin instance triggering the hardware interrupt.
-        :return: None
-        """
+    def _leftover_irq(self, _pin: Pin) -> None:
+        """Ngắt IRQ cho Cảm biến 2 (Thu hồi thuốc thừa)"""
         current_time: int = time.ticks_ms()
 
+        # Cơ chế Debounce 80ms
         if time.ticks_diff(current_time, self._states.check_last_trigger_time) > 80:
             self._states.check_count += 1
             self._states.check_last_trigger_time = current_time
-            print(
-                f"\n[CHECK SENSOR] Pill detected! Total count: {self._states.check_count}"
-            )
+            print(f"\n⚠️ [SENSOR 2 - THU HỒI] Phát hiện viên thuốc thừa thứ: {self._states.check_count}")
 
     @classmethod
-    def create(cls) -> Sensor:
+    def create(cls) -> "Sensor":
         if cls.__instance is None:
             cls.__instance = Sensor()
         return cls.__instance
