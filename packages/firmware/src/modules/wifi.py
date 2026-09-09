@@ -41,7 +41,7 @@ class WiFi:
         password = self.wifi.get("password")
         print(f"Connecting to WiFi SSID: {ssid}...", end="")
 
-        timeout = 20
+        timeout = 30
         wlan.connect(ssid, password)
         while not wlan.isconnected() and timeout > 0:
             await uasyncio.sleep(1)

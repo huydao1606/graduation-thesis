@@ -1,164 +1,96 @@
+import time
+
 import uasyncio
 
-from lib.api import Api
 from lib.schedule import Schedule
-from lib.states import States
 from lib.utils import get_current_time, print_table
 from modules.servo import Servo
-from modules.stepper import Stepper
 
 
 class Schedules:
-    __instance: "Schedules | None" = None
+    _instance = None
 
-    api: Api
-    servo: Servo
-    stepper: Stepper
-    schedule: Schedule
-    states: States
-
-    def __init__(self):
-        self.api = Api.create()
+    def __init__(self) -> None:
         self.servo = Servo.create()
-        self.stepper = Stepper.create()
         self.schedule = Schedule.create()
-        self.states = States.create()
 
-    async def start(self) -> None:
-        print("[STARTUP] Schedules task initiated...\n")
-        last_executed_time = ""
+    async def start(self, schedules_data: list | None = None) -> None:
+        print("[STARTUP] Schedules task active...\n")
+        last_time = ""
 
         while True:
             try:
                 now = get_current_time()
-                current_date: str = f"{now[0]:04d}-{now[1]:02d}-{now[2]:02d}"
-                current_time: str = f"{now[3]:02d}:{now[4]:02d}"
+                cur_date = f"{now[0]:04d}-{now[1]:02d}-{now[2]:02d}"
+                cur_time = f"{now[3]:02d}:{now[4]:02d}"
 
-                if current_time != last_executed_time:
-                    last_executed_time = current_time
-                    schedules = self.schedule.get_schedules()
+                if cur_time != last_time:
+                    last_time = cur_time
 
-                    print(f"\n[{current_date} {current_time}] Loaded schedules:")
-                    print_table(schedules, keys=["id", "time", "date", "status"])
+                    schedules = (
+                        schedules_data
+                        if schedules_data is not None
+                        else self.schedule.get_schedules()
+                    )
 
-                    for schedule in schedules:
-                        item_date = schedule.get("date")
-                        item_time = schedule.get("time")
-                        item_status = schedule.get("status", "pending")
+                    sec = now[5] if len(now) > 5 else 0
+                    print(
+                        f"\n[SCHEDULE] [{cur_date} {cur_time}:{sec:02d}] Check schedules..."
+                    )
+                    print_table(schedules, keys=["id", "date", "time", "status"])
 
-                        if item_status != "pending":
+                    for item_sch in schedules:
+                        if item_sch.get("status", "pending") != "pending":
                             continue
 
-                        item_time = item_time[:5] if item_time else None
+                        sch_time = (item_sch.get("time") or "")[:5]
+                        sch_date = item_sch.get("date")
 
-                        if item_time == current_time and (
-                            not item_date or item_date == current_date
+                        if sch_time == cur_time and (
+                            not sch_date or sch_date == cur_date
                         ):
-                            schedule_id = schedule.get("id")
-                            print(f"\nExecuting schedule ID {schedule_id}: {schedule}")
+                            sch_id = item_sch.get("id")
+                            items = item_sch.get("items", [])
+                            print(f"\n---> EXECUTE SCHEDULE {sch_id}")
 
-                            items = schedule.get("items", [])
-                            schedule_success = True
-                            failed_slot = []
+                            all_success = True
 
-                            # --- BƯỚC 1: NHẢ THUỐC (CẢM BIẾN 1 ĐẢM NHẬN Ở SERVO.PY) ---
                             for item in items:
                                 slot = item.get("slot")
-                                quantity = item.get("quantity", 1)
+                                qty = item.get("quantity", 1)
 
-                                print(f"-> Dropping {quantity} pill(s) from slot {slot}")
-                                success = await self.servo.drop(
-                                    slot=slot, quantity=quantity
+                                print(
+                                    f"[SCHEDULE] Gọi Servo nhả Slot '{slot}' x {qty} viên..."
                                 )
+                                success = await self.servo.drop(slot=slot, quantity=qty)
 
                                 if not success:
-                                    print(f"[ERROR] Slot {slot} failed! Ghi nhận lỗi và chạy tiếp ngăn sau.")
-                                    schedule_success = False
-                                    failed_slot.append(slot)
-                                else:
-                                    print(f"[INFO] Successfully dispensed slot {slot}")
+                                    all_success = False
+                                    break
+                                await uasyncio.sleep(1.0)
 
-                            # --- BƯỚC 2: QUY TRÌNH CƠ KHÍ & CẢM BIẾN 2 ---
-                            step_90_do = 512 
-
-                            if schedule_success:
-                                print("[SYSTEM] Đang mở ngăn kéo cho người dùng lấy thuốc...")
-                                await self.stepper.drawer.move(step_90_do, delay_ms=2)
-                                
-                                print("[SYSTEM] Bắt đầu chờ bệnh nhân uống thuốc (Test: 15s)...")
-                                await uasyncio.sleep(15) 
-                                
-                                print("[SYSTEM] Hết giờ! Đang đóng ngăn kéo...")
-                                await self.stepper.drawer.move(-step_90_do, delay_ms=2)
-                                await uasyncio.sleep(1) 
-
-                                # FIX TẠI ĐÂY: Ép cảm biến số 2 về 0 trước khi lật khay
-                                print("[SYSTEM] Đang lật khay thu hồi thuốc dư...")
-                                self.states.check_count = 0  
-                                await self.stepper.discard.move(step_90_do, delay_ms=2)
-                                
-                                await uasyncio.sleep(3) 
-                                
-                                print("[SYSTEM] Trả khay lật về vị trí cũ...")
-                                await self.stepper.discard.move(-step_90_do, delay_ms=2)
-
-                                # ĐÁNH GIÁ SỐ THUỐC BỎ MÓT BẰNG CẢM BIẾN 2
-                                missed_pills = self.states.check_count
-                                if missed_pills > 0:
-                                    notify_title = "Cảnh báo quên uống thuốc"
-                                    notify_body = f"Bệnh nhân đã bỏ mót {missed_pills} viên thuốc ở khay!"
-                                    notify_level = "warning"
-                                    print(f"🚨 [CẢNH BÁO] {notify_body}")
-                                else:
-                                    notify_title = "Uống thuốc thành công"
-                                    notify_body = f"Bệnh nhân đã lấy toàn bộ thuốc của lịch {schedule_id}."
-                                    notify_level = "info"
-                                    print(f"✅ [THÀNH CÔNG] {notify_body}")
-
-                                _ = await self.api.post(
-                                    "/api/notifications/send",
-                                    data={
-                                        "scheduleId": schedule_id,
-                                        "level": notify_level,
-                                        "title": notify_title,
-                                        "body": notify_body,
-                                        "payload": {"missed_pills": missed_pills},
-                                    },
+                            if all_success:
+                                print(f"[SCHEDULE] Lịch {sch_id} đã nhả đủ thuốc!")
+                                item_sch["status"] = "completed"
+                                _ = await self.schedule.update_status(
+                                    str(sch_id), "completed"
                                 )
-                                _ = await self.schedule.update_status(str(schedule_id), "completed")
-
                             else:
-                                print("\n[SYSTEM] Phát hiện thiếu thuốc/kẹt thuốc! GIỮ ĐÓNG NGĂN KÉO.")
-                                
-                                print("[SYSTEM] Đang lật khay để xả bỏ liều lỗi xuống khoang chứa...")
-                                await self.stepper.discard.move(step_90_do, delay_ms=2)
-                                
-                                await uasyncio.sleep(3) 
-                                
-                                print("[SYSTEM] Đã dọn sạch khay! Trả khay về vị trí cũ...")
-                                await self.stepper.discard.move(-step_90_do, delay_ms=2)
-
-                                _ = await self.api.post(
-                                    "/api/notifications/send",
-                                    data={
-                                        "scheduleId": schedule_id,
-                                        "level": "error",
-                                        "title": "Lỗi nhả thuốc - Đã hủy liều",
-                                        "body": f"Lịch {schedule_id} bị lỗi cơ khí/kẹt thuốc. Đã tự xả bỏ liều uống không an toàn.",
-                                        "payload": {"failed_slots": failed_slot},
-                                    },
+                                print(f"[SCHEDULE] Lịch {sch_id} thất bại!")
+                                item_sch["status"] = "failed"
+                                _ = await self.schedule.update_status(
+                                    str(sch_id), "failed"
                                 )
-                                _ = await self.schedule.update_status(str(schedule_id), "failed")
-                                print(f"[FAILED] Schedule {schedule_id} failed.")
 
-            except Exception as e:
-                print(f"Error in schedule loop: {e}")
+            except Exception as e:  # noqa: BLE001
+                print(f"[SCHEDULE] Error: {e}")
 
-            # FIX TẠI ĐÂY: Xóa tính toán cồng kềnh, chỉ ngủ 1s canh nhịp, không bao giờ lệch!
-            await uasyncio.sleep(1)
+            # Tính toán chính xác ms còn lại đến giây tiếp theo để chống trôi thời gian
+            ms_to_next_second = 1000 - (time.ticks_ms() % 1000)
+            await uasyncio.sleep_ms(ms_to_next_second)
 
     @classmethod
-    def create(cls) -> "Schedules":
-        if cls.__instance is None:
-            cls.__instance = Schedules()
-        return cls.__instance
+    def create(cls) -> Schedules:
+        if cls._instance is None:
+            cls._instance = Schedules()
+        return cls._instance

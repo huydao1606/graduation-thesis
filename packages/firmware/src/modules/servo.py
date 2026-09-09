@@ -1,64 +1,77 @@
 import time
+
 import uasyncio
+from machine import PWM, Pin
 
 from lib.pins import Pins
-from lib.states import States
 
 
 class Servo:
     _instance = None
 
     def __init__(self) -> None:
-        self._states = States.create()
         pins = Pins.create()
-        self._servos = pins.servos
+        self.servo_map = {
+            "0-0": pins.servos[0],
+            "0-1": pins.servos[1],
+            "1-0": pins.servos[2],
+            "1-1": pins.servos[3],
+        }
+        self.sensor_pin = pins.sensor_drop
+        self._drop_detected = False
 
-    def control(self, index: int, pulse_us: int) -> None:
-        if 0 <= index < len(self._servos):
-            duty = 0 if pulse_us == 0 else int((pulse_us / 20000) * 65535)
-            self._servos[index].duty_u16(duty)
+    def _irq_handler(self, _pin: Pin) -> None:
+        self._drop_detected = True
 
-    async def drop(self, slot: str, quantity: int, timeout_per_pill: int = 8) -> bool:
-        slot_map = {"0-0": 0, "0-1": 1, "1-0": 2, "1-1": 3}
-        servo_index = slot_map.get(slot)
+    def control(self, servo: PWM, pulse_us: int) -> None:
+        duty = 0 if pulse_us == 0 else int((pulse_us / 20000) * 65535)
+        servo.duty_u16(duty)
 
-        if servo_index is None:
-            print(f"[ERROR] Invalid slot: {slot}")
+    async def drop(self, slot: str, quantity: int = 1, timeout_ms: int = 3000) -> bool:
+        servo_obj = self.servo_map.get(slot)
+        if not servo_obj:
+            print(f"[SERVO] Không tìm thấy Servo cho slot '{slot}'")
             return False
 
-        # FIX TẠI ĐÂY: Reset biến đếm ĐÚNG 1 LẦN trước khi nhả thuốc
-        self._states.drop_count = 0
+        print(f"[SERVO] Slot {slot} | Bắt đầu nhả: {quantity} viên...")
 
         for i in range(quantity):
-            target_count = i + 1  # Mục tiêu đếm tăng dần (1, 2, 3...)
-            
-            start_time = time.ticks_ms()
-            timeout_ms = timeout_per_pill * 1000
+            self._drop_detected = False
+            # Gán ngắt cảm biến
+            _ = self.sensor_pin.irq(trigger=Pin.IRQ_FALLING, handler=self._irq_handler)
 
-            self.control(servo_index, 1300)
+            self.control(servo_obj, 1300)
 
             pill_dropped = False
-            while time.ticks_diff(time.ticks_ms(), start_time) < timeout_ms:
-                # FIX TẠI ĐÂY: Quét theo tổng số lượng, không bị mất đếm nếu rớt 2 viên 1 lúc
-                if self._states.drop_count >= target_count:
+            start_time = time.ticks_ms()
+
+            while not pill_dropped:
+                if self._drop_detected:
                     pill_dropped = True
+                    print(f"[SERVO] Slot {slot} | Viên thứ {i + 1} đã nhả thành công!")
                     break
-                await uasyncio.sleep(0.01)
 
-            self.control(servo_index, 0)
+                # Kiểm tra quá thời gian timeout (ví dụ: 3 giây)
+                if time.ticks_diff(time.ticks_ms(), start_time) > timeout_ms:
+                    print(f"[SERVO] Slot {slot} Timeout ở viên thứ {i + 1}!")
+                    break
 
+                await uasyncio.sleep_ms(10)
+
+            # Tắt ngắt lập tức sau khi xong hoặc timeout
+            self.sensor_pin.irq(handler=None)
+            self.control(servo_obj, 0)
+            await uasyncio.sleep_ms(300)
+
+            # Nếu không rớt viên nào thì báo thất bại luôn
             if not pill_dropped:
-                print(f"[ERROR] Slot {slot} timeout! Expected: {target_count}, Got: {self._states.drop_count}")
                 return False
 
-            print(f"[INFO] Slot {slot} dropped pill {i + 1}/{quantity}.")
-            await uasyncio.sleep(1.0)
-
-        print(f"[SUCCESS] Slot {slot} successfully dropped {quantity} pills.")
+        print(f"[SERVO] Slot {slot} đã nhả đủ {quantity} viên!")
         return True
 
     @classmethod
-    def create(cls) -> "Servo":
+    def create(cls) -> Servo:
         if cls._instance is None:
             cls._instance = Servo()
         return cls._instance
