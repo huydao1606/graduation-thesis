@@ -2,6 +2,7 @@ import time
 
 import uasyncio
 
+from lib.api import Api
 from lib.schedule import Schedule
 from lib.utils import get_current_time, print_table
 from modules.servo import Servo
@@ -13,6 +14,7 @@ class Schedules:
     def __init__(self) -> None:
         self.servo = Servo.create()
         self.schedule = Schedule.create()
+        self.api = Api.create()
 
     async def start(self, schedules_data: list | None = None) -> None:
         print("[STARTUP] Schedules task active...\n")
@@ -53,7 +55,7 @@ class Schedules:
                             items = item_sch.get("items", [])
                             print(f"\n---> EXECUTE SCHEDULE {sch_id}")
 
-                            all_success = True
+                            slot_errors = []
 
                             for item in items:
                                 slot = item.get("slot")
@@ -65,19 +67,39 @@ class Schedules:
                                 success = await self.servo.drop(slot=slot, quantity=qty)
 
                                 if not success:
-                                    all_success = False
-                                    break
+                                    slot_errors.append({"slot": slot, "quantity": qty})
                                 await uasyncio.sleep(1.0)
 
-                            if all_success:
+                            if len(slot_errors) == 0:
                                 print(f"[SCHEDULE] Lịch {sch_id} đã nhả đủ thuốc!")
                                 _ = await self.schedule.update_status(
                                     str(sch_id), "completed"
                                 )
+                                _ = await self.api.post(
+                                    "/api/notifications/send",
+                                    data={
+                                        "scheduleId": str(sch_id),
+                                        "level": "info",
+                                        "title": "Schedule completed",
+                                        "body": f"Schedule {sch_id} has been completed successfully.",
+                                        "payload": {},
+                                    },
+                                )
+
                             else:
                                 print(f"[SCHEDULE] Lịch {sch_id} thất bại!")
                                 _ = await self.schedule.update_status(
                                     str(sch_id), "failed"
+                                )
+                                _ = await self.api.post(
+                                    "/api/notifications/send",
+                                    data={
+                                        "scheduleId": str(sch_id),
+                                        "level": "error",
+                                        "title": "Schedule failed",
+                                        "body": f"Schedule {sch_id} has failed to complete.",
+                                        "payload": {"failed_slots": slot_errors},
+                                    },
                                 )
 
             except Exception as e:  # noqa: BLE001

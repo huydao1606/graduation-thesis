@@ -24,7 +24,6 @@ class Api:
         }
 
     def _parse_url(self, url: str) -> tuple[str, str, int, str]:
-        """Tách URL thành proto, host, port, path."""
         proto, _, host_path = url.partition("://")
         if not host_path:
             host_path = proto
