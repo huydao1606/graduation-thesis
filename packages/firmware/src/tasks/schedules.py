@@ -2,71 +2,29 @@ import uasyncio
 
 from lib.api import Api
 from lib.schedule import Schedule
+from lib.states import States
 from lib.utils import get_current_time, print_table
 from modules.servo import Servo
 from modules.stepper import Stepper
 
 
 class Schedules:
-    __instance: Schedules | None = None
+    __instance: "Schedules | None" = None
 
     api: Api
-
     servo: Servo
     stepper: Stepper
-
     schedule: Schedule
-
-    _led_timer_task: uasyncio.Task | None = None
+    states: States
 
     def __init__(self):
-        """
-        Initialize the Schedules instance with hardware peripherals and file path.
-
-        :param path: File path storing the JSON schedule database.
-        """
-
         self.api = Api.create()
-
         self.servo = Servo.create()
         self.stepper = Stepper.create()
-
         self.schedule = Schedule.create()
+        self.states = States.create()
 
     async def start(self) -> None:
-        """
-        Start the primary asynchronous event loop that monitors and executes pending schedules.
-
-        Detailed Workflow:
-            1. **Time Tracking & Loop Synchronization**:
-               - Continuously queries the real-time clock via `get_current_time()`.
-               - Formats current date (`DD/MM/YYYY`) and time (`HH:MM`).
-               - Prevents duplicate executions within the same minute by tracking `last_executed_time`.
-
-            2. **Schedule Resolution**:
-               - Reads stored schedule records from `self.path` using `_read_schedule()`.
-               - Prints an formatted status table to the output console.
-               - Filters for items with a `"pending"` status matching the current time and (optional) date.
-
-            3. **Execution & Hardware Feedback**:
-               - Triggers visual LED feedback (Yellow: `(1, 1, 0)`) during processing.
-               - Sequentially iterates through scheduled items, driving the servo mechanism (`self.servo.drop`)
-                 for specified slot indices and pill quantities.
-               - Aborts execution immediately if any slot drop action fails.
-
-            4. **State Persistence & Completion Visuals**:
-               - Sets post-execution LED feedback:
-                 - **Green `(0, 1, 0)`**: Successful execution.
-                 - **Red `(1, 0, 0)`**: Failed execution or error exception.
-               - Automatically turns off the LED after a 10-second timeout.
-
-            5. **Adaptive Sleep**:
-               - Calculates remaining seconds until the next exact minute boundary (`60 - current_second`)
-                 to minimize CPU usage while keeping precision timing.
-
-        :return: None
-        :raises Exception: Catches and logs runtime exceptions without terminating the main loop.
-        """
         print("[STARTUP] Schedules task initiated...\n")
         last_executed_time = ""
 
@@ -99,74 +57,104 @@ class Schedules:
                             schedule_id = schedule.get("id")
                             print(f"\nExecuting schedule ID {schedule_id}: {schedule}")
 
-                            if self._led_timer_task and not self._led_timer_task.done():
-                                _ = self._led_timer_task.cancel()
-
                             items = schedule.get("items", [])
                             schedule_success = True
                             failed_slot = []
 
+                            # --- BƯỚC 1: NHẢ THUỐC BẰNG SERVO ---
                             for item in items:
                                 slot = item.get("slot")
                                 quantity = item.get("quantity", 1)
 
-                                print(
-                                    f"-> Dropping {quantity} pill(s) from slot {slot}"
-                                )
+                                print(f"-> Dropping {quantity} pill(s) from slot {slot}")
                                 success = await self.servo.drop(
                                     slot=slot, quantity=quantity
                                 )
 
                                 if not success:
-                                    print(
-                                        f"[ERROR] Slot {slot} failed! Aborting schedule {schedule_id}."
-                                    )
+                                    print(f"[ERROR] Slot {slot} failed! Ghi nhận lỗi và chạy tiếp ngăn sau.")
                                     schedule_success = False
                                     failed_slot.append(slot)
-                                    break
                                 else:
                                     print(f"[INFO] Successfully dispensed slot {slot}")
 
-                            step = 512
-                            await self.stepper.drawer.move(step, delay_ms=2)
-                            await uasyncio.sleep(2)
-                            await self.stepper.drawer.move(-step, delay_ms=2)
-                            await uasyncio.sleep(2)
+                            # --- BƯỚC 2: QUY TRÌNH CƠ KHÍ & BÁO CÁO API ---
+                            step_90_do = 512  # Số bước quay 90 độ (Chế độ Full-Step)
 
                             if schedule_success:
+                                print("[SYSTEM] Đang mở ngăn kéo cho người dùng lấy thuốc...")
+                                await self.stepper.drawer.move(step_90_do, delay_ms=2)
+                                
+                                print("[SYSTEM] Bắt đầu chờ bệnh nhân uống thuốc (Test: 15s)...")
+                                await uasyncio.sleep(15) 
+                                
+                                print("[SYSTEM] Hết giờ! Đang đóng ngăn kéo...")
+                                await self.stepper.drawer.move(-step_90_do, delay_ms=2)
+                                await uasyncio.sleep(1) # Nghỉ 1 nhịp cho êm máy
+
+                                print("[SYSTEM] Đang lật khay thu hồi thuốc dư...")
+                                self.states.check_count = 0  # Reset bộ đếm cảm biến 2
+                                await self.stepper.discard.move(step_90_do, delay_ms=2)
+                                
+                                # Chờ 3 giây để thuốc (nếu còn) rớt qua mắt thần
+                                await uasyncio.sleep(3) 
+                                
+                                print("[SYSTEM] Trả khay lật về vị trí cũ...")
+                                await self.stepper.discard.move(-step_90_do, delay_ms=2)
+
+                                # Đánh giá tình trạng uống thuốc
+                                missed_pills = self.states.check_count
+                                if missed_pills > 0:
+                                    notify_title = "Cảnh báo quên uống thuốc"
+                                    notify_body = f"Bệnh nhân đã bỏ mót {missed_pills} viên thuốc ở khay!"
+                                    notify_level = "warning"
+                                    print(f"🚨 [CẢNH BÁO] {notify_body}")
+                                else:
+                                    notify_title = "Uống thuốc thành công"
+                                    notify_body = f"Bệnh nhân đã lấy toàn bộ thuốc của lịch {schedule_id}."
+                                    notify_level = "info"
+                                    print(f"✅ [THÀNH CÔNG] {notify_body}")
+
+                                # Gửi API và lưu trạng thái Thành công
                                 _ = await self.api.post(
                                     "/api/notifications/send",
                                     data={
                                         "scheduleId": schedule_id,
-                                        "level": "info",
-                                        "title": "Schedule Completed",
-                                        "body": f"Schedule {schedule_id} completed successfully.",
-                                        "payload": {},
+                                        "level": notify_level,
+                                        "title": notify_title,
+                                        "body": notify_body,
+                                        "payload": {"missed_pills": missed_pills},
                                     },
                                 )
-                                _ = await self.schedule.update_status(
-                                    str(schedule_id), "completed"
-                                )
-                                print(
-                                    f"[SUCCESS] Schedule {schedule_id} completed successfully."
-                                )
+                                _ = await self.schedule.update_status(str(schedule_id), "completed")
+
                             else:
+                                print("\n[SYSTEM] Phát hiện thiếu thuốc/kẹt thuốc! GIỮ ĐÓNG NGĂN KÉO.")
+                                
+                                # Lật khay để xả bỏ liều thuốc không hoàn chỉnh
+                                print("[SYSTEM] Đang lật khay để xả bỏ các viên thuốc lẻ tẻ xuống khoang chứa...")
+                                await self.stepper.discard.move(step_90_do, delay_ms=2)
+                                
+                                await uasyncio.sleep(3) 
+                                
+                                print("[SYSTEM] Đã dọn sạch khay! Trả khay về vị trí cũ...")
+                                await self.stepper.discard.move(-step_90_do, delay_ms=2)
+
+                                # Gửi API và lưu trạng thái Thất bại (Lỗi kẹt thuốc)
                                 _ = await self.api.post(
                                     "/api/notifications/send",
                                     data={
                                         "scheduleId": schedule_id,
                                         "level": "error",
-                                        "title": "Schedule Failed",
-                                        "body": f"Schedule {schedule_id} failed to complete.",
+                                        "title": "Lỗi nhả thuốc - Đã hủy liều",
+                                        "body": f"Lịch {schedule_id} bị lỗi cơ khí/kẹt thuốc. Đã xả bỏ liều uống không hoàn chỉnh.",
                                         "payload": {"failed_slots": failed_slot},
                                     },
                                 )
-                                _ = await self.schedule.update_status(
-                                    str(schedule_id), "failed"
-                                )
+                                _ = await self.schedule.update_status(str(schedule_id), "failed")
                                 print(f"[FAILED] Schedule {schedule_id} failed.")
 
-            except Exception as e:  # noqa: BLE001
+            except Exception as e:
                 print(f"Error in schedule loop: {e}")
 
             now_after_task = get_current_time()
@@ -177,7 +165,7 @@ class Schedules:
             await uasyncio.sleep(seconds_to_next_minute)
 
     @classmethod
-    def create(cls) -> Schedules:
+    def create(cls) -> "Schedules":
         if cls.__instance is None:
             cls.__instance = Schedules()
         return cls.__instance
