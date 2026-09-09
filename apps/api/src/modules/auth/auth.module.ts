@@ -1,13 +1,13 @@
 import * as Layer from 'effect/Layer'
 
 import type { AppModule } from '@/modules/app.module'
-import type { UserService } from '@/modules/user/application/user.service'
+import type { UserService } from '@/modules/user/application/ports/user.service'
 
-import { AuthService } from '@/modules/auth/application/auth.service'
 import { ChangePasswordUseCase } from '@/modules/auth/application/use-case/change-password.use-case'
 import { ForgotPasswordUseCase } from '@/modules/auth/application/use-case/forgot-password.use-case'
 import { LoginUseCase } from '@/modules/auth/application/use-case/login.use-case'
 import { LogoutUseCase } from '@/modules/auth/application/use-case/logout.use-case'
+import { OAuthUseCase } from '@/modules/auth/application/use-case/oauth.use-case'
 import { RefreshTokenUseCase } from '@/modules/auth/application/use-case/refresh-token.use-case'
 import { RegisterUseCase } from '@/modules/auth/application/use-case/register.use-case'
 import { ResetPasswordUseCase } from '@/modules/auth/application/use-case/reset-password'
@@ -20,33 +20,27 @@ import { authMiddleware } from '@/modules/auth/presentation/middleware/auth.midd
 
 export class AuthModule {
   public static create(
-    config: Pick<AppModule.Config, 'persistence' | 'auth'>,
-    imports: { userService: Layer.Layer<UserService, unknown> }
+    config: Pick<AppModule.Config, 'persistence' | 'providers'>,
+    imports: Layer.Layer<UserService>
   ) {
     const infrastructureLayer = AuthInfrastructureModule.create(
       config.persistence,
-      config.auth
-    )
+      config.providers
+    ).pipe(Layer.merge(imports))
 
     const useCaseLayer = Layer.mergeAll(
       ChangePasswordUseCase.layer,
       ForgotPasswordUseCase.layer,
       LoginUseCase.layer,
       LogoutUseCase.layer,
+      OAuthUseCase.layer,
       RefreshTokenUseCase.layer,
       RegisterUseCase.layer,
       ResetPasswordUseCase.layer,
       WhoAmIUseCase.layer
     )
 
-    const serviceLayer = Layer.provideMerge(
-      AuthService.layer,
-      imports.userService
-    )
-
-    const applicationLayer = Layer.provideMerge(useCaseLayer, serviceLayer)
-
-    const layer = Layer.provideMerge(applicationLayer, infrastructureLayer)
+    const layer = Layer.provideMerge(useCaseLayer, infrastructureLayer)
 
     return {
       controller: Layer.mergeAll(authController, oauthController).pipe(
@@ -54,16 +48,9 @@ export class AuthModule {
       ),
 
       exports: {
-        layer,
-
-        middlewares: {
-          auth: authMiddleware.pipe(Layer.provide(layer)),
-          admin: adminMiddleware.pipe(Layer.provide(layer)),
-        },
-
-        services: {
-          authService: AuthService.layer,
-        },
+        middleware: Layer.merge(authMiddleware, adminMiddleware).pipe(
+          Layer.provide(layer)
+        ),
       },
     }
   }

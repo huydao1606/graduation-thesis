@@ -1,56 +1,86 @@
 import uasyncio
-import ujson
 
+from lib.api import Api
+from lib.schedule import Schedule
 from lib.utils import get_current_time, print_table
-from modules.rgb import RGB
 from modules.servo import Servo
+from modules.stepper import Stepper
 
 
 class Schedules:
     __instance: Schedules | None = None
 
-    path: str
+    api: Api
+
     servo: Servo
-    rgb: RGB
+    stepper: Stepper
+
+    schedule: Schedule
+
     _led_timer_task: uasyncio.Task | None = None
 
-    def __init__(self, path: str = "data/schedules.json"):
-        self.path = path
+    def __init__(self):
+        """
+        Initialize the Schedules instance with hardware peripherals and file path.
+
+        :param path: File path storing the JSON schedule database.
+        """
+
+        self.api = Api.create()
+
         self.servo = Servo.create()
-        self.rgb = RGB.create()
+        self.stepper = Stepper.create()
 
-    async def _set_color_with_timeout(
-        self, r: int, g: int, b: int, timeout: int = 10
-    ) -> None:
-        """Đổi màu LED và tự động tắt sau [timeout] giây."""
-        if self._led_timer_task and not self._led_timer_task.done():
-            _ = self._led_timer_task.cancel()
-
-        self.rgb.set_color(r, g, b)
-
-        async def _turn_off_after_delay():
-            try:
-                await uasyncio.sleep(timeout)
-                self.rgb.set_color(0, 0, 0)
-            except uasyncio.CancelledError:
-                pass
-
-        self._led_timer_task = uasyncio.create_task(_turn_off_after_delay())
+        self.schedule = Schedule.create()
 
     async def start(self) -> None:
+        """
+        Start the primary asynchronous event loop that monitors and executes pending schedules.
+
+        Detailed Workflow:
+            1. **Time Tracking & Loop Synchronization**:
+               - Continuously queries the real-time clock via `get_current_time()`.
+               - Formats current date (`DD/MM/YYYY`) and time (`HH:MM`).
+               - Prevents duplicate executions within the same minute by tracking `last_executed_time`.
+
+            2. **Schedule Resolution**:
+               - Reads stored schedule records from `self.path` using `_read_schedule()`.
+               - Prints an formatted status table to the output console.
+               - Filters for items with a `"pending"` status matching the current time and (optional) date.
+
+            3. **Execution & Hardware Feedback**:
+               - Triggers visual LED feedback (Yellow: `(1, 1, 0)`) during processing.
+               - Sequentially iterates through scheduled items, driving the servo mechanism (`self.servo.drop`)
+                 for specified slot indices and pill quantities.
+               - Aborts execution immediately if any slot drop action fails.
+
+            4. **State Persistence & Completion Visuals**:
+               - Sets post-execution LED feedback:
+                 - **Green `(0, 1, 0)`**: Successful execution.
+                 - **Red `(1, 0, 0)`**: Failed execution or error exception.
+               - Automatically turns off the LED after a 10-second timeout.
+
+            5. **Adaptive Sleep**:
+               - Calculates remaining seconds until the next exact minute boundary (`60 - current_second`)
+                 to minimize CPU usage while keeping precision timing.
+
+        :return: None
+        :raises Exception: Catches and logs runtime exceptions without terminating the main loop.
+        """
+        print("[STARTUP] Schedules task initiated...\n")
         last_executed_time = ""
 
         while True:
             try:
                 now = get_current_time()
-                current_date: str = f"{now[2]:02d}/{now[1]:02d}/{now[0]}"
+                current_date: str = f"{now[0]:04d}-{now[1]:02d}-{now[2]:02d}"
                 current_time: str = f"{now[3]:02d}:{now[4]:02d}"
 
                 if current_time != last_executed_time:
                     last_executed_time = current_time
-                    schedules = self._read_schedule()
+                    schedules = self.schedule.get_schedules()
 
-                    print(f"\n[{current_time}] Loaded schedules:")
+                    print(f"\n[{current_date} {current_time}] Loaded schedules:")
                     print_table(schedules, keys=["id", "time", "date", "status"])
 
                     for schedule in schedules:
@@ -58,9 +88,10 @@ class Schedules:
                         item_time = schedule.get("time")
                         item_status = schedule.get("status", "pending")
 
-                        # Bỏ qua các lịch trình đã chạy xong hoặc thất bại từ trước
                         if item_status != "pending":
                             continue
+
+                        item_time = item_time[:5] if item_time else None
 
                         if item_time == current_time and (
                             not item_date or item_date == current_date
@@ -70,10 +101,10 @@ class Schedules:
 
                             if self._led_timer_task and not self._led_timer_task.done():
                                 _ = self._led_timer_task.cancel()
-                            self.rgb.set_color(1, 1, 0)  # VÀNG khi chạy
 
                             items = schedule.get("items", [])
                             schedule_success = True
+                            failed_slot = []
 
                             for item in items:
                                 slot = item.get("slot")
@@ -91,30 +122,52 @@ class Schedules:
                                         f"[ERROR] Slot {slot} failed! Aborting schedule {schedule_id}."
                                     )
                                     schedule_success = False
+                                    failed_slot.append(slot)
                                     break
                                 else:
                                     print(f"[INFO] Successfully dispensed slot {slot}")
 
-                            # Cập nhật status và ghi lại vào file JSON
-                            new_status = "completed" if schedule_success else "failed"
-                            self._update_schedule_status(schedule_id, new_status)
+                            step = 512
+                            await self.stepper.drawer.move(step, delay_ms=2)
+                            await uasyncio.sleep(2)
+                            await self.stepper.drawer.move(-step, delay_ms=2)
+                            await uasyncio.sleep(2)
 
                             if schedule_success:
+                                _ = await self.api.post(
+                                    "/api/notifications/send",
+                                    data={
+                                        "scheduleId": schedule_id,
+                                        "level": "info",
+                                        "title": "Schedule Completed",
+                                        "body": f"Schedule {schedule_id} completed successfully.",
+                                        "payload": {},
+                                    },
+                                )
+                                _ = await self.schedule.update_status(
+                                    str(schedule_id), "completed"
+                                )
                                 print(
                                     f"[SUCCESS] Schedule {schedule_id} completed successfully."
                                 )
-                                await self._set_color_with_timeout(
-                                    0, 1, 0, timeout=10
-                                )  # XANH LÁ
                             else:
+                                _ = await self.api.post(
+                                    "/api/notifications/send",
+                                    data={
+                                        "scheduleId": schedule_id,
+                                        "level": "error",
+                                        "title": "Schedule Failed",
+                                        "body": f"Schedule {schedule_id} failed to complete.",
+                                        "payload": {"failed_slots": failed_slot},
+                                    },
+                                )
+                                _ = await self.schedule.update_status(
+                                    str(schedule_id), "failed"
+                                )
                                 print(f"[FAILED] Schedule {schedule_id} failed.")
-                                await self._set_color_with_timeout(
-                                    1, 0, 0, timeout=10
-                                )  # ĐỎ
 
             except Exception as e:  # noqa: BLE001
                 print(f"Error in schedule loop: {e}")
-                await self._set_color_with_timeout(1, 0, 0, timeout=10)
 
             now_after_task = get_current_time()
             seconds_to_next_minute = 60 - now_after_task[5]
@@ -122,30 +175,6 @@ class Schedules:
                 seconds_to_next_minute = 60
 
             await uasyncio.sleep(seconds_to_next_minute)
-
-    def _read_schedule(self) -> list:
-        try:
-            with open(self.path, "r") as f:
-                data = ujson.load(f)
-                return data if isinstance(data, list) else []
-        except Exception as e:  # noqa: BLE001
-            print(f"Error reading file {self.path}: {e}")
-            return []
-
-    def _update_schedule_status(self, schedule_id: str, new_status: str) -> None:
-        """Đọc file, cập nhật trạng thái của schedule_id và ghi đè lại file JSON."""
-        try:
-            schedules = self._read_schedule()
-            for item in schedules:
-                if item.get("id") == schedule_id:
-                    item["status"] = new_status
-                    break
-
-            with open(self.path, "w") as f:
-                ujson.dump(schedules, f)
-            print(f"[DB] Updated schedule {schedule_id} status to '{new_status}'")
-        except Exception as e:  # noqa: BLE001
-            print(f"[ERROR] Failed to update schedule status: {e}")
 
     @classmethod
     def create(cls) -> Schedules:

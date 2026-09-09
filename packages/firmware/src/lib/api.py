@@ -1,7 +1,7 @@
 import uasyncio
 import urequests
 
-from lib.config import load_config
+from lib.config import Config
 
 
 class Api:
@@ -11,7 +11,7 @@ class Api:
     base_headers: dict
 
     def __init__(self) -> None:
-        config = load_config()
+        config = Config.create()
         api_config: dict = config.get("api", {})
 
         self.base_url = api_config.get("url", "")
@@ -23,8 +23,12 @@ class Api:
 
     async def get(self, endpoint: str, params: dict | None = None) -> dict:
         url = f"{self.base_url}{endpoint}"
+        if params:
+            query_string = "&".join(f"{key}={value}" for key, value in params.items())
+            url = f"{url}?{query_string}"
+
         try:
-            res = urequests.get(url, headers=self.base_headers, params=params)
+            res = urequests.get(url, headers=self.base_headers)
             if res.status_code != 200:
                 return {"error": f"Status code: {res.status_code}"}
             return res.json()

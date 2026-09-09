@@ -2,133 +2,208 @@ import uasyncio
 import ubluetooth
 import ujson
 
-from lib.config import load_config, save_wifi_config
+from lib.config import Config
+from tasks.ble_handler import BLEHandler
 
 _CONFIG_SERVICE_UUID = ubluetooth.UUID("ffaa5bd2-45cd-4512-bf35-c5d4276a0c7a")
 _CHAR_RX_UUID = ubluetooth.UUID("3d8cffcb-69d3-41d3-8f9e-fafed0bcce6b")
 _CHAR_TX_UUID = ubluetooth.UUID("09cbb497-1c8a-4ad6-b196-3459c1820a1a")
 
-_FLAG_WRITE = 0x0008
-_FLAG_READ = 0x0002
-_FLAG_NOTIFY = 0x0010
-
 
 class BLE:
     __instance: BLE | None = None
 
-    ble: ubluetooth.BLE | None = None
-    device: dict | None = None
-
     handle_rx: memoryview[int] | None = None
     handle_tx: memoryview[int] | None = None
     conn_handle: memoryview[int] | None = None
+    _config: dict | None = None
 
     def __init__(self) -> None:
-        config = load_config()
-        self.device = config.get("device")
+        config = Config.create()
+        self._config = config.get("device", {})
+
+        self.rx_buffer = bytearray()
+        self.send_lock = uasyncio.Lock()
+        self.handler = BLEHandler(self)
 
         self.ble = ubluetooth.BLE()
         self.ble.active(True)
         _ = self.ble.irq(self._irq)
-        self.conn_handle = None
 
-        CONFIG_SERVICE = (
+        service = (
             _CONFIG_SERVICE_UUID,
             (
-                (_CHAR_RX_UUID, _FLAG_WRITE),
-                (_CHAR_TX_UUID, _FLAG_READ | _FLAG_NOTIFY),
+                (_CHAR_RX_UUID, 0x0008),  # WRITE
+                (_CHAR_TX_UUID, 0x0002 | 0x0010),  # READ | NOTIFY
             ),
         )
-        ((self.handle_rx, self.handle_tx),) = self.ble.gatts_register_services(
-            (CONFIG_SERVICE,)
-        )
+        handles = self.ble.gatts_register_services((service,))
+        self.handle_rx, self.handle_tx = handles[0]
+        self.ble.gatts_set_buffer(self.handle_rx, 512, True)
 
     def start_advertising(self) -> None:
         """
-        Start advertising the BLE device with the specified name.
-        The advertising payload includes the device name and is broadcasted at a
-        regular interval of 1000 milliseconds.
+        Construct GAP advertising payload and start broadcasting BLE presence.
+
+        Payload Structure:
+            - Flags AD Type (0x01): General Discoverable Mode & BR/EDR Not Supported.
+            - Complete Local Name (0x09): Encoded device name string from configuration.
+            - Complete List of 128-bit Service Class UUIDs (0x07): Service configuration UUID.
+
+        :return: None
         """
-        if not self.ble or not self.device:
+        if not self.ble or self._config is None:
             return
 
-        device_name = str(self.device.get("name")).encode("utf-8")
-        payload = (
-            bytearray([0x02, 0x01, 0x06, len(device_name) + 1, 0x09]) + device_name
-        )
-        self.ble.gap_advertise(1000, adv_data=payload)  # pyright: ignore[reportCallIssue]
-        print(f"Advertising as {self.device.get('name')}...")
+        name = self._config.get("name", "Rozumari")
 
-    def _irq(self, event: int, data: tuple[memoryview[int], ...]) -> None:
+        payload = bytearray([0x02, 0x01, 0x06])
+        name_bytes = name.encode("utf-8")
+        payload.extend(bytearray([len(name_bytes) + 1, 0x09]) + name_bytes)
+        uuid_bytes = bytes(_CONFIG_SERVICE_UUID)  # pyright: ignore[reportArgumentType]
+        payload.extend(bytearray([len(uuid_bytes) + 1, 0x07]) + uuid_bytes)
+
+        self.ble.gap_advertise(625000, adv_data=payload)  # pyright: ignore[reportCallIssue]
+        print(f"Advertising as {name}...")
+
+    def _irq(self, event: int, data: tuple) -> None:
         """
-        Handle BLE events triggered by the BLE stack.
-        This method is called when a BLE event occurs, such as a device connecting,
-        disconnecting, or receiving data. It processes the event and takes appropriate
-        actions based on the event type.
+        Interrupt Request (IRQ) callback dispatcher handling BLE hardware events.
+
+        Handled Events:
+            - **Event 1 (_IRQ_CENTRAL_CONNECT)**:
+                Stores connection handle, flushes RX buffer, and schedules the `on_connect` handler task.
+            - **Event 2 (_IRQ_CENTRAL_DISCONNECT)**:
+                Resets connection handle, flushes RX buffer, and schedules advertising restart task.
+            - **Event 3 (_IRQ_GATTS_WRITE)**:
+                Reads incoming characteristic data chunks into `rx_buffer` and schedules buffer processing
+                when a newline delimiter (`\\n`) is encountered.
+
+        :param event: Numeric identifier of the triggered BLE IRQ event.
+        :param data: Tuple containing event-specific parameters from MicroPython BLE stack.
+        :return: None
+        """
+
+        if event == 1:  # Connect
+            print("Device connected")
+            self.conn_handle = data[0]
+            self.rx_buffer = bytearray()
+
+            _ = uasyncio.create_task(self.handler.on_connect())
+        elif event == 2:  # Disconnect
+            print("Device disconnected")
+            self.conn_handle = None
+            self.rx_buffer = bytearray()
+            _ = uasyncio.create_task(self._async_start_advertising())
+
+        elif event == 3:  # Write
+            if self.handle_rx is None:
+                return
+
+            _, val_handle = data
+            if val_handle == self.handle_rx:
+                chunk = self.ble.gatts_read(self.handle_rx)
+                if chunk:
+                    self.rx_buffer.extend(chunk)
+                    if b"\n" in chunk:
+                        _ = uasyncio.create_task(self._process_buffer())
+
+    async def send_code(self, action: int, status: int = 0) -> None:
+        """
+        Pack Action (3 bits) and Status (5 bits) into a single byte transmission frame and notify connected client.
+
+        Byte Framing Structure (1 Byte / 8 Bits):
+            - **Bits 7..5 (3 bits)**: Action Code (`action & 0x07`).
+            - **Bits 4..0 (5 bits)**: Status Code (`status & 0x1F`).
+            - Bitwise Math: `packet_byte = ((action & 0x07) << 5) | (status & 0x1F)`
+
+        Workflow:
+            1. Packs inputs into a 1-byte payload.
+            2. Acquires `send_lock` concurrency mutex.
+            3. Writes byte payload to local GATT characteristic buffer (`handle_tx`).
+            4. Triggers GATT notification push to connected client.
+
+        :param action: Integer action code identifier (0 to 7).
+        :param status: Integer status code or bitmasked payload parameter (0 to 31).
+        :return: None
+        """
+        if not self.ble or self.conn_handle is None or self.handle_tx is None:
+            print("Cannot send: Not connected")
+            return
+
+        if status > 31 or action == 6:  # ACTION_SEND_DEVICE_INFO = 6
+            action_byte = (action & 0x07) << 5
+            low_byte = status & 0xFF
+            high_byte = (status >> 8) & 0xFF
+            packet_bytes = bytes([action_byte, low_byte, high_byte])
+            packet_type = "3 Bytes"
+        else:
+            packet_bytes = bytes([((action & 0x07) << 5) | (status & 0x1F)])
+            packet_type = "1 Byte"
+
+        async with self.send_lock:
+            self.ble.gatts_write(self.handle_tx, packet_bytes)
+            await uasyncio.sleep_ms(10)
+
+            try:
+                self.ble.gatts_notify(self.conn_handle, self.handle_tx, packet_bytes)  # pyright: ignore[reportCallIssue]
+            except TypeError:
+                self.ble.gatts_notify(self.conn_handle, self.handle_tx)  # pyright: ignore[reportArgumentType]
+
+            await uasyncio.sleep_ms(30)
+            print(
+                f"Sent {packet_type}: 0x{packet_bytes.hex().upper()} (Action: {action}, Status/Value: {status})"
+            )
+
+    def stop(self) -> None:
+        """
+        Stop GAP advertising, disconnect active central clients, and deactivate BLE radio interface.
+
+        :return: None
         """
         if not self.ble:
             return
-
-        if event == 1:
-            print("Device connected")
-            self.conn_handle, _, _ = data
-        elif event == 2:
-            print("Device disconnected")
+        self.ble.gap_advertise(0)
+        if self.conn_handle is not None:
+            try:
+                _ = self.ble.gap_disconnect(self.conn_handle)
+            except Exception:  # noqa: BLE001, S110
+                pass
             self.conn_handle = None
-            self.start_advertising()
-        elif event == 3:
-            _, value_handle = data
-            if self.handle_rx is not None and value_handle == self.handle_rx:
-                raw_data: bytes = self.ble.gatts_read(self.handle_rx)
-                _ = uasyncio.create_task(self._handle(raw_data))
-
-    def send(self, data: dict[str, str]) -> None:
-        """
-        Send a JSON-encoded message to the connected BLE device.
-        The message is serialized to JSON, encoded as UTF-8 bytes, and sent via the
-        BLE characteristic. If the device is not connected or the necessary handles are
-        not available, the method returns without sending any data.
-        """
-        if self.ble is None or self.conn_handle is None or self.handle_tx is None:
-            return
-
-        _bytes = ujson.dumps(data).encode("utf-8")
-        self.ble.gatts_write(self.handle_tx, _bytes)
-        self.ble.gatts_notify(self.conn_handle, _bytes)
-
-    async def _handle(self, raw_data: bytes) -> None:
-        """
-        Handle incoming BLE messages by decoding the raw data and processing the JSON content.
-        """
-        try:
-            json: dict[str, str] = ujson.loads(raw_data.decode("utf-8"))
-            action = json.get("action", "")
-            payload: dict[str, str] = {}
-
-            print(f"Received message: {action}")
-
-            if action == "ping":
-                self.send({"action": "pong"})
-
-            elif action == "set_wifi":
-                payload = json.get("payload", {})  # pyright: ignore[reportAssignmentType]
-
-                ssid = payload.get("ssid", "")
-                password = payload.get("password", "")
-                if ssid and password:
-                    save_wifi_config({"ssid": ssid, "password": password})
-                    self.send({"action": "wifi_saved"})
-                else:
-                    self.send({"action": "invalid_payload"})
-
-        except Exception as e:  # noqa: BLE001
-            print(f"Error handling message: {e}")
-
-    def stop(self) -> None:
-        if self.ble is None:
-            return
-
         self.ble.active(False)
+
+    async def _async_start_advertising(self) -> None:
+        """
+        Asynchronously delay and trigger advertising broadcast restart.
+
+        :return: None
+        """
+        await uasyncio.sleep_ms(100)
+        self.start_advertising()
+
+    async def _process_buffer(self) -> None:
+        """
+        Parse accumulated UTF-8 text buffer into JSON command structures and execute handlers.
+
+        :return: None
+        """
+        if not self.rx_buffer:
+            return
+
+        raw_str = self.rx_buffer.decode("utf-8", "ignore").strip()
+
+        try:
+            data = ujson.loads(raw_str)
+            self.rx_buffer = bytearray()
+
+            action = data.get("action")
+            payload = data.get("payload", {})
+
+            if action:
+                await self.handler.handle_command(action, payload)
+
+        except Exception:  # noqa: BLE001, S110
+            pass
 
     @classmethod
     def create(cls) -> BLE:

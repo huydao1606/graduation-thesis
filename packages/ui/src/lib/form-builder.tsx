@@ -15,23 +15,7 @@ import * as SchemaIssue from 'effect/SchemaIssue'
 import * as Atom from 'effect/unstable/reactivity/Atom'
 import * as React from 'react'
 
-import { cn } from '@/lib/utils'
-
-type Issues = {
-  path?: readonly unknown[]
-  message: string
-}[]
-
-interface FormState<TValues> {
-  values: TValues
-  errors: Record<keyof TValues, Issues>
-  isPending: boolean
-}
-
-interface SubmitOptions<A, E> {
-  onSuccess?: (data: NoInfer<A>) => void
-  onError?: (error: NoInfer<E>) => void
-}
+import { useIsomorphicLayoutEffect } from '@/hooks/use-isomorphic-layout-effect'
 
 export class FormBuilder<TFields extends Schema.Struct.Fields> {
   private formatter = SchemaIssue.makeFormatterStandardSchemaV1()
@@ -77,7 +61,7 @@ export class FormBuilder<TFields extends Schema.Struct.Fields> {
     )
 
     const errorsAtoms = Atom.family((_fieldName: keyof TValues) =>
-      Atom.make([] as Issues)
+      Atom.make([] as FormBuilder.Issues)
     )
 
     const pendingAtom = Atom.make(false)
@@ -88,7 +72,7 @@ export class FormBuilder<TFields extends Schema.Struct.Fields> {
           const defaults = get(defaultValuesAtom)
           const keys = Object.keys(defaults) as (keyof TValues)[]
           const values = { ...defaults } as TValues
-          const errors = {} as Record<keyof TValues, Issues>
+          const errors = {} as Record<keyof TValues, FormBuilder.Issues>
           const isPending = get(pendingAtom)
 
           for (const key of keys) {
@@ -100,7 +84,7 @@ export class FormBuilder<TFields extends Schema.Struct.Fields> {
 
           return { values, errors, isPending }
         },
-        (ctx, newState: FormState<TValues>) => {
+        (ctx, newState: FormBuilder.FormState<TValues>) => {
           const keys = Object.keys(newState.values) as (keyof TValues)[]
           for (const key of keys) {
             const oldVal = ctx.get(valuesAtoms(key))
@@ -127,6 +111,10 @@ export class FormBuilder<TFields extends Schema.Struct.Fields> {
     const FormContext = React.createContext<{
       formId: string
       defaultValues: TValues
+      handleSubmit: <A, E>(
+        onSubmit: (values: TValues) => Effect.Effect<A, E>,
+        options?: FormBuilder.SubmitOptions<A, E>
+      ) => void
     } | null>(null)
 
     const useSubmit = () => {
@@ -144,7 +132,7 @@ export class FormBuilder<TFields extends Schema.Struct.Fields> {
       return React.useCallback(
         async <A, E>(
           onSubmit: (values: TValues) => Effect.Effect<A, E>,
-          opts?: SubmitOptions<A, E>
+          opts?: FormBuilder.SubmitOptions<A, E>
         ) => {
           if (isPending) return
           setState((prev) => ({ ...prev, isPending: true }))
@@ -156,7 +144,7 @@ export class FormBuilder<TFields extends Schema.Struct.Fields> {
 
           if (result._tag === 'Failure') {
             const { issues } = this.formatter(result.failure.issue)
-            const errors = {} as Record<keyof TValues, Issues>
+            const errors = {} as Record<keyof TValues, FormBuilder.Issues>
             for (const issue of issues) {
               const path = issue.path?.[0] as keyof TValues
               if (!errors[path]) errors[path] = []
@@ -168,19 +156,13 @@ export class FormBuilder<TFields extends Schema.Struct.Fields> {
 
           setState((prev) => ({
             ...prev,
-            errors: {} as Record<keyof TValues, Issues>,
+            errors: {} as Record<keyof TValues, FormBuilder.Issues>,
           }))
 
           await onSubmit(result.success).pipe(
-            Effect.tap((a) =>
-              Effect.sync(() => {
-                opts?.onSuccess?.(a)
-              })
-            ),
+            Effect.tap((a) => Effect.sync(() => opts?.onSuccess?.(a))),
             Effect.catch((error) =>
-              Effect.sync(() => {
-                opts?.onError?.(error)
-              })
+              Effect.sync(() => opts?.onError?.(this.makeMatchableError(error)))
             ),
             Effect.runPromise
           )
@@ -197,43 +179,36 @@ export class FormBuilder<TFields extends Schema.Struct.Fields> {
         render: (args: {
           handleSubmit: <A, E>(
             onSubmit: (values: TValues) => Effect.Effect<A, E>,
-            options?: SubmitOptions<A, E>
+            options?: FormBuilder.SubmitOptions<A, E>
           ) => void
-          meta: { formId: string; isPending: boolean }
+          meta: { formId: string }
         }) => useRender.ComponentProps<'div'>['render']
       }
-    > = ({ defaultValues, render, className, ...props }) => {
+    > = ({ defaultValues, render, ...props }) => {
       const id = React.useId()
       const formId = `form-${id}`
 
       const setDefaultValues = useAtomSet(defaultValuesAtom)
-      React.useMemo(() => {
-        setDefaultValues(defaultValues)
-      }, [defaultValues, setDefaultValues])
+      useIsomorphicLayoutEffect(
+        () => setDefaultValues(defaultValues),
+        [defaultValues, setDefaultValues]
+      )
 
       const handleSubmit = useSubmit()
-      const isPending = useAtomValue(formAtom.use(), (s) => s.isPending)
 
       const memoizedValue = React.useMemo(
-        () => ({ formId, defaultValues }),
-        [formId, defaultValues]
+        () => ({ formId, defaultValues, handleSubmit }),
+        [formId, defaultValues, handleSubmit]
       )
 
       return (
         <FormContext value={memoizedValue}>
           {useRender({
             defaultTagName: 'div',
-            props: mergeProps<'div'>(
-              {
-                id: formId,
-                className: cn('group/form', className),
-              },
-              props
-            ),
-            render: render({ handleSubmit, meta: { formId, isPending } }),
+            props: mergeProps<'div'>({ id: formId }, props),
+            render: render({ handleSubmit, meta: { formId } }),
             state: {
               slot: 'form',
-              pending: isPending,
             },
           })}
         </FormContext>
@@ -253,7 +228,7 @@ export class FormBuilder<TFields extends Schema.Struct.Fields> {
         meta: {
           descriptionId: string
           errorId: string
-          errors: Issues
+          errors: FormBuilder.Issues
           isPending: boolean
 
           add: TValues[TFieldName] extends (infer U)[]
@@ -316,26 +291,24 @@ export class FormBuilder<TFields extends Schema.Struct.Fields> {
         (
           index: number,
           newValue: TValues[TFieldName] extends (infer U)[] ? U : never
-        ) => {
+        ) =>
           setValue((prev: unknown[]) =>
             Array.isArray(prev)
               ? ((prev as unknown[]).map((v, i) =>
                   i === index ? newValue : v
                 ) as never)
               : prev
-          )
-        },
+          ),
         [setValue]
       )
 
       const remove = React.useCallback(
-        (index: number) => {
+        (index: number) =>
           setValue((prev: unknown[]) =>
             Array.isArray(prev)
               ? ((prev as unknown[]).filter((_, i) => i !== index) as never)
               : prev
-          )
-        },
+          ),
         [setValue]
       )
 
@@ -398,7 +371,7 @@ export class FormBuilder<TFields extends Schema.Struct.Fields> {
       render: (args: {
         handleSubmit: <A, E>(
           onSubmit: (values: TValues) => Effect.Effect<A, E>,
-          options?: SubmitOptions<A, E>
+          options?: FormBuilder.SubmitOptions<A, E>
         ) => void
         meta: { formId: string; isPending: boolean }
       }) => React.ReactNode
@@ -407,14 +380,13 @@ export class FormBuilder<TFields extends Schema.Struct.Fields> {
       if (!ctx) throw new Error('Submit must be used within a Form')
 
       const isPending = useAtomValue(formAtom.use(), (s) => s.isPending)
-      const handleSubmit = useSubmit()
 
       const memoizedValue = React.useMemo(
         () => ({
-          handleSubmit,
+          handleSubmit: ctx.handleSubmit,
           meta: { formId: ctx.formId, isPending },
         }),
-        [ctx.formId, handleSubmit, isPending]
+        [ctx.formId, ctx.handleSubmit, isPending]
       )
 
       return props.render(memoizedValue)
@@ -433,5 +405,67 @@ export class FormBuilder<TFields extends Schema.Struct.Fields> {
 
       state: formAtom.use,
     }
+  }
+
+  // oxlint-disable-next-line class-methods-use-this
+  private makeMatchableError<E>(error: E): FormBuilder.MatchableError<E> {
+    // oxlint-disable-next-line typescript/no-explicit-any
+    const match = (cases: Record<string, (err: any) => void>) => {
+      if (
+        error &&
+        typeof error === 'object' &&
+        '_tag' in error &&
+        typeof error._tag === 'string' &&
+        cases[error._tag]
+      )
+        return cases[error._tag]?.(error)
+
+      if (cases._) return cases._(error)
+    }
+
+    if (typeof error === 'object' && error !== null) {
+      Object.defineProperty(error, 'match', {
+        value: match,
+        enumerable: false,
+        writable: true,
+        configurable: true,
+      })
+      return error as FormBuilder.MatchableError<E>
+    }
+
+    return {
+      error,
+      match,
+    } as unknown as FormBuilder.MatchableError<E>
+  }
+}
+
+export namespace FormBuilder {
+  export type Issues = {
+    path?: readonly unknown[]
+    message: string
+  }[]
+
+  export interface FormState<TValues> {
+    values: TValues
+    errors: Record<keyof TValues, Issues>
+    isPending: boolean
+  }
+
+  export type MatchableError<E> = E & {
+    match: <
+      Cases extends (E extends { _tag: string }
+        ? { [K in E['_tag']]?: (error: Extract<E, { _tag: K }>) => void } & {
+            _?: (error: E) => void
+          }
+        : { _?: (error: E) => void }),
+    >(
+      cases: Cases
+    ) => void
+  }
+
+  export interface SubmitOptions<A, E> {
+    onSuccess?: (data: NoInfer<A>) => void
+    onError?: (error: MatchableError<NoInfer<E>>) => void
   }
 }

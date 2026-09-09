@@ -10,10 +10,19 @@ import { useQuery } from '@tanstack/react-query'
 import { parseAsInteger, parseAsString, useQueryStates } from 'nuqs'
 
 import { DataTable } from '@/components/data-table'
+import { useSession } from '@/hooks/use-session'
+import { createMetadata } from '@/lib/metadata'
 import { api } from '@/lib/runtime'
-import { useSession } from '@/lib/use-session'
 import { DeleteUserDialog } from '@/routes/dashboard/_components/delete-user-dialog'
 import { EditUserDialog } from '@/routes/dashboard/_components/edit-user-dialog'
+
+import type { Route } from './+types/users'
+
+export const meta: Route.MetaFunction = () =>
+  createMetadata({
+    title: 'Users',
+    description: 'Manage user accounts, roles, and access.',
+  })
 
 const ROLE_VARIANTS = {
   user: 'info',
@@ -76,6 +85,15 @@ export default function UsersPage() {
         columns={{
           username: 'Username',
           email: 'Email',
+          deletedAt: {
+            header: 'Status',
+            action: (item) =>
+              item.deletedAt ? (
+                <Badge variant='destructive'>Deleted</Badge>
+              ) : (
+                <Badge variant='success'>Active</Badge>
+              ),
+          },
           role: {
             header: 'Role',
             action: (item) => (

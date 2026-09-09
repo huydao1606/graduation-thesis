@@ -1,167 +1,122 @@
-import type { UserId } from '@rozumari/contract/user/schemas/user.schema'
-
 import { Api } from '@rozumari/contract'
 import { ProviderError } from '@rozumari/contract/auth/schemas/auth.error'
-import { UserRole } from '@rozumari/contract/user/schemas/user.schema'
 import * as Effect from 'effect/Effect'
-import * as FetchHttpClient from 'effect/unstable/http/FetchHttpClient'
 import * as HttpServerResponse from 'effect/unstable/http/HttpServerResponse'
 import * as HttpApiBuilder from 'effect/unstable/httpapi/HttpApiBuilder'
 
-import { AuthService } from '@/modules/auth/application/auth.service'
-import { OAuth } from '@/modules/auth/application/security/oauth'
-import { COOKIE_KEYS, COOKIE_OPTIONS } from '@/modules/auth/constants'
-import { Account } from '@/modules/auth/domain/entities/account.entity'
-import { AccountRepository } from '@/modules/auth/domain/repositories/account.repository'
-import { generateStateOrCode } from '@/modules/auth/infrastructure/security/crypto'
-import { UserService } from '@/modules/user/application/user.service'
-import { ResendService } from '@/shared/infrastructure/third-party/resend/resend.service'
-import { withTransaction } from '@/shared/utils'
+import { OAuthUseCase } from '@/modules/auth/application/use-case/oauth.use-case'
+import { COOKIE_KEYS, COOKIE_OPTIONS } from '@/modules/auth/domain/constants'
+import { generateStateOrCode } from '@/modules/auth/domain/utils/crypto'
 
-export const oauthController = HttpApiBuilder.group(
-  Api,
-  'oauth',
-  Effect.fn(function* oauthController(handlers) {
-    const accountRepository = yield* AccountRepository
+export const oauthController = HttpApiBuilder.group(Api, 'oauth', (handlers) =>
+  handlers
+    .handle(
+      'authorize',
+      Effect.fn(function* authorizeHandler({ params, query }) {
+        const state = yield* generateStateOrCode
+        const code = yield* generateStateOrCode
 
-    const authService = yield* AuthService
-    const userService = yield* UserService
+        const authorizeUrl = yield* OAuthUseCase.use((s) =>
+          s.authorize(params.provider, state, code)
+        )
 
-    const resend = yield* Effect.option(ResendService)
+        return yield* HttpServerResponse.redirect(authorizeUrl).pipe(
+          HttpServerResponse.setCookies([
+            [
+              COOKIE_KEYS.OAUTH_STATE,
+              state,
+              { ...COOKIE_OPTIONS, maxAge: '5 minutes' },
+            ],
+            [
+              COOKIE_KEYS.OAUTH_CODE,
+              code,
+              { ...COOKIE_OPTIONS, maxAge: '5 minutes' },
+            ],
+            [
+              COOKIE_KEYS.OAUTH_REDIRECT,
+              query.redirect_uri ?? '/',
+              { ...COOKIE_OPTIONS, maxAge: '5 minutes' },
+            ],
+          ]),
+          Effect.orDie
+        )
+      })
+    )
 
-    return handlers
-      .handle(
-        'authorize',
-        Effect.fn(function* authorizeHandler({ params, query }) {
-          const provider = yield* OAuth.forProvider(params.provider)
+    .handle(
+      'callback',
+      Effect.fn(function* callbackHandler({ params, query, request }) {
+        const { code, state } = query
+        const storedCode = request.cookies[COOKIE_KEYS.OAUTH_CODE]
+        const storedState = request.cookies[COOKIE_KEYS.OAUTH_STATE]
 
-          const state = yield* generateStateOrCode
-          const code = yield* generateStateOrCode
-
-          const authorizeUrl = yield* provider.createAuthorizationUrl(
-            state,
-            code
+        const isMissingParams = !code || !state || !storedCode || !storedState
+        if (isMissingParams || state !== storedState)
+          return yield* Effect.fail(
+            new ProviderError({ message: 'Invalid state parameter' })
           )
 
-          return yield* HttpServerResponse.redirect(authorizeUrl).pipe(
-            HttpServerResponse.setCookies([
-              [
-                COOKIE_KEYS.OAUTH_STATE,
-                state,
-                { ...COOKIE_OPTIONS, maxAge: '5 minutes' },
-              ],
-              [
-                COOKIE_KEYS.OAUTH_CODE,
-                code,
-                { ...COOKIE_OPTIONS, maxAge: '5 minutes' },
-              ],
-              [
-                COOKIE_KEYS.OAUTH_REDIRECT,
-                query.redirect_uri ?? '/',
-                { ...COOKIE_OPTIONS, maxAge: '5 minutes' },
-              ],
-            ]),
-            Effect.orDie
+        const { accessToken, refreshToken, expiresAt } =
+          yield* OAuthUseCase.use((s) =>
+            s.callback(params.provider, code, storedCode)
           )
-        })
-      )
 
-      .handle(
-        'callback',
-        Effect.fn(function* callbackHandler({ params, query, request }) {
-          const provider = yield* OAuth.forProvider(params.provider)
+        const original = new URL(request.originalUrl)
+        const redirectUri = new URL(
+          (request.cookies[COOKIE_KEYS.OAUTH_REDIRECT] ?? '/').replace(
+            /^(?<protocol>https?|exp):\/(?!\/)/u,
+            '$1://'
+          ),
+          original.origin
+        )
+        if (redirectUri.origin !== original.origin) {
+          redirectUri.searchParams.set('access_token', accessToken)
+          redirectUri.searchParams.set('refresh_token', refreshToken)
+        }
 
-          const { code, state } = query
-          const storedCode = request.cookies[COOKIE_KEYS.OAUTH_CODE]
-          const storedState = request.cookies[COOKIE_KEYS.OAUTH_STATE]
+        return yield* HttpServerResponse.redirect(redirectUri).pipe(
+          HttpServerResponse.setCookies([
+            [
+              COOKIE_KEYS.REFRESH_TOKEN,
+              refreshToken,
+              { ...COOKIE_OPTIONS, expires: expiresAt },
+            ],
+            [
+              COOKIE_KEYS.ACCESS_TOKEN,
+              accessToken,
+              { ...COOKIE_OPTIONS, expires: expiresAt },
+            ],
 
-          const isMissingParams = !code || !state || !storedCode || !storedState
-          if (isMissingParams || state !== storedState)
-            return yield* Effect.fail(
-              new ProviderError({ message: 'Invalid state parameter' })
-            )
+            // Clean up OAuth cookies
+            [
+              COOKIE_KEYS.OAUTH_STATE,
+              '',
+              { ...COOKIE_OPTIONS, maxAge: '0 seconds' },
+            ],
+            [
+              COOKIE_KEYS.OAUTH_CODE,
+              '',
+              { ...COOKIE_OPTIONS, maxAge: '0 seconds' },
+            ],
+            [
+              COOKIE_KEYS.OAUTH_REDIRECT,
+              '',
+              { ...COOKIE_OPTIONS, maxAge: '0 seconds' },
+            ],
+          ]),
+          Effect.orDie
+        )
+      })
+    )
 
-          const { id, email } = yield* provider
-            .fetchUserData(code, storedCode)
-            .pipe(Effect.provide(FetchHttpClient.layer))
-            .pipe(Effect.orDie)
+    .handle(
+      'exchange',
+      Effect.fn(function* exchangeHandler({ payload }) {
+        const { accessToken, refreshToken, expiresAt } =
+          yield* OAuthUseCase.use((s) => s.exchange(payload.token))
 
-          const { accessToken, refreshToken, expiresAt, isNewUser } =
-            yield* Effect.gen(function* tx() {
-              const [[account], user] = yield* Effect.all([
-                accountRepository.findMany({
-                  where: {
-                    provider: { eq: params.provider },
-                    providerId: { eq: id },
-                  },
-                  limit: 1,
-                }),
-                userService.findByIdentifier({ email }),
-              ])
-
-              let _isNewUser = false,
-                userId: UserId,
-                userRole: UserRole
-
-              if (account) {
-                ;({ userId } = account)
-                userRole = user?.role ?? UserRole.make('user')
-              } else {
-                if (user) {
-                  if (user.deletedAt !== null)
-                    return yield* Effect.fail(
-                      new ProviderError({ message: 'User account is deleted' })
-                    )
-
-                  userId = user.id
-                  userRole = user.role
-                } else {
-                  const newUser = yield* userService.create({
-                    username: crypto.randomUUID().slice(0, 8),
-                    email,
-                  })
-                  userId = newUser.id
-                  userRole = newUser.role
-                  _isNewUser = true
-                }
-
-                const newAccount = Account.make({
-                  provider: params.provider,
-                  providerId: id,
-                  userId,
-                })
-                yield* accountRepository.save(newAccount)
-              }
-
-              const result = yield* authService.createRefreshToken(
-                userId,
-                userRole
-              )
-
-              return { ...result, isNewUser: _isNewUser }
-            }).pipe(withTransaction)
-
-          if (isNewUser && resend._tag === 'Some')
-            yield* resend.value.sendEmail({
-              to: [email],
-              subject: 'Welcome to Rozumari!',
-              html: `<p>Welcome to Rozumari! Your account has been created successfully.</p>`,
-            })
-
-          const original = new URL(request.originalUrl)
-          const redirectUri = new URL(
-            (request.cookies[COOKIE_KEYS.OAUTH_REDIRECT] ?? '/').replace(
-              /^(?<protocol>https?|exp):\/(?!\/)/u,
-              '$1://'
-            ),
-            original.origin
-          )
-          if (redirectUri.origin !== original.origin) {
-            redirectUri.searchParams.set('access_token', accessToken)
-            redirectUri.searchParams.set('refresh_token', refreshToken)
-          }
-
-          return yield* HttpServerResponse.redirect(redirectUri).pipe(
+        return yield* HttpServerResponse.json({ success: true }).pipe(
+          Effect.flatMap(
             HttpServerResponse.setCookies([
               [
                 COOKIE_KEYS.REFRESH_TOKEN,
@@ -171,61 +126,12 @@ export const oauthController = HttpApiBuilder.group(
               [
                 COOKIE_KEYS.ACCESS_TOKEN,
                 accessToken,
-                { ...COOKIE_OPTIONS, expires: expiresAt },
+                { ...COOKIE_OPTIONS, maxAge: '15 minutes' },
               ],
-
-              // Clean up OAuth cookies
-              [
-                COOKIE_KEYS.OAUTH_STATE,
-                '',
-                { ...COOKIE_OPTIONS, maxAge: '0 seconds' },
-              ],
-              [
-                COOKIE_KEYS.OAUTH_CODE,
-                '',
-                { ...COOKIE_OPTIONS, maxAge: '0 seconds' },
-              ],
-              [
-                COOKIE_KEYS.OAUTH_REDIRECT,
-                '',
-                { ...COOKIE_OPTIONS, maxAge: '0 seconds' },
-              ],
-            ]),
-            Effect.orDie
-          )
-        })
-      )
-
-      .handle(
-        'exchange',
-        Effect.fn(function* exchangeHandler({ payload }) {
-          const { token } = payload
-
-          const { session, user } = yield* authService.verifyRefreshToken(token)
-
-          const accessToken = yield* authService.createAccessToken(
-            user.id,
-            user.role
-          )
-
-          return yield* HttpServerResponse.json({ success: true }).pipe(
-            Effect.flatMap(
-              HttpServerResponse.setCookies([
-                [
-                  COOKIE_KEYS.REFRESH_TOKEN,
-                  token,
-                  { ...COOKIE_OPTIONS, expires: session.expiresAt },
-                ],
-                [
-                  COOKIE_KEYS.ACCESS_TOKEN,
-                  accessToken,
-                  { ...COOKIE_OPTIONS, maxAge: '15 minutes' },
-                ],
-              ])
-            ),
-            Effect.orDie
-          )
-        })
-      )
-  })
+            ])
+          ),
+          Effect.orDie
+        )
+      })
+    )
 )

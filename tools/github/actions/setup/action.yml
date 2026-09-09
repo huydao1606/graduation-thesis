@@ -10,7 +10,7 @@ runs:
 
     - name: Install Dependencies
       shell: bash
-      run: bun ci
+      run: bun ci --ignore-scripts
 
     - name: Build Packages
       shell: bash

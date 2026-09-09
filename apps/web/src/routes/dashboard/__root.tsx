@@ -1,36 +1,58 @@
+import { Loader2Icon } from '@rozumari/ui/components/icons'
 import { Separator } from '@rozumari/ui/components/separator'
 import {
   SidebarInset,
   SidebarProvider,
   SidebarTrigger,
 } from '@rozumari/ui/components/sidebar'
-import { Navigate, Outlet } from 'react-router'
+import { useIsomorphicLayoutEffect } from '@rozumari/ui/hooks/use-isomorphic-layout-effect'
+import { Outlet, useNavigate } from 'react-router'
 
-import { useSession } from '@/lib/use-session'
+import { useSession } from '@/hooks/use-session'
+import { createMetadata } from '@/lib/metadata'
+import { Breadcrumbs } from '@/routes/dashboard/_components/breadcrumbs'
 import { DashboardSidebar } from '@/routes/dashboard/_components/dashboard-sidebar'
 
+import type { Route } from './+types/__root'
+
+export const meta: Route.MetaFunction = () =>
+  createMetadata({ title: 'Dashboard' })
+
 export default function DashboardRoot() {
-  const { user } = useSession()
-  if (!user) return <Navigate to='/login' replace />
+  const { status } = useSession()
+  const navigate = useNavigate()
+
+  useIsomorphicLayoutEffect(() => {
+    let isMounted = true
+
+    if (status === 'unauthenticated' && isMounted)
+      navigate('/login', { replace: true })
+
+    return () => {
+      isMounted = false
+    }
+  }, [navigate, status])
+
+  if (status === 'loading')
+    return (
+      <div className='flex h-screen items-center justify-center'>
+        <Loader2Icon className='size-8 animate-spin' />
+      </div>
+    )
 
   return (
     <SidebarProvider>
       <DashboardSidebar />
 
-      <SidebarInset>
-        <header className='flex h-16 shrink-0 items-center gap-2 border-b px-4'>
+      <SidebarInset className='min-w-0' suppressHydrationWarning>
+        <header className='sticky inset-0 z-50 flex h-16 shrink-0 items-center gap-2 border-b border-sidebar-border bg-sidebar px-4'>
           <SidebarTrigger className='-ml-1' />
           <Separator
             orientation='vertical'
             className='mr-2 h-4 data-vertical:self-center'
           />
 
-          <div className='flex flex-col'>
-            <h1 className='text-sm leading-none font-semibold'>Dashboard</h1>
-            <p className='text-xs text-muted-foreground'>
-              Medication adherence overview
-            </p>
-          </div>
+          <Breadcrumbs />
         </header>
 
         <section className='px-4 py-6'>

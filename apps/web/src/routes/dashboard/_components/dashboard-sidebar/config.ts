@@ -1,16 +1,13 @@
 import type { LucideIcon } from '@rozumari/ui/components/icons'
 
 import {
-  ActivityIcon,
   BellIcon,
   CalendarClockIcon,
   CreditCardIcon,
   FileTextIcon,
   LayoutDashboardIcon,
-  LifeBuoyIcon,
   PillBottleIcon,
   ReceiptIcon,
-  SettingsIcon,
   UsersIcon,
 } from '@rozumari/ui/components/icons'
 
@@ -38,12 +35,6 @@ export const navGroups: NavGroupConfig[] = [
     label: 'Overview',
     items: [
       { title: 'Dashboard', icon: LayoutDashboardIcon, url: '/dashboard' },
-      {
-        title: 'Adherence',
-        icon: ActivityIcon,
-        url: '/dashboard/adherence',
-        isAdminOnly: true,
-      },
     ],
   },
   {
@@ -94,6 +85,4 @@ export const navGroups: NavGroupConfig[] = [
 
 export const secondaryNavItems: NavItem[] = [
   { title: 'Notifications', icon: BellIcon, url: '/dashboard/notifications' },
-  { title: 'Settings', icon: SettingsIcon, url: '/dashboard/settings' },
-  { title: 'Support', icon: LifeBuoyIcon, url: '/dashboard/support' },
 ]

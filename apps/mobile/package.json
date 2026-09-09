@@ -1,9 +1,58 @@
 {
   "name": "@rozumari/mobile",
-  "version": "0.0.2",
+  "version": "0.0.10",
   "private": false,
   "type": "module",
+  "main": "index.ts",
   "scripts": {
-    "clean": "git clean -fdx .cache .turbo node_modules"
+    "android": "expo run:android",
+    "clean": "git clean -fdx .cache .expo .turbo android ios node_modules",
+    "dev": "expo start",
+    "eas-build-post-install": "cd ../.. && bun run build --filter './packages/*'",
+    "ios": "expo run:ios",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@effect/atom-react": "catalog:effect",
+    "@expo-google-fonts/geist": "^0.4.2",
+    "@react-native-community/datetimepicker": "9.1.0",
+    "@rozumari/contract": "workspace:*",
+    "@rozumari/lib": "workspace:*",
+    "@rozumari/ui": "workspace:*",
+    "@tanstack/react-query": "catalog:prod",
+    "@tiesen/effect-tanstack-query": "catalog:prod",
+    "effect": "catalog:effect",
+    "expo": "^57.0.21",
+    "expo-constants": "^57.0.17",
+    "expo-device": "^57.0.1",
+    "expo-font": "^57.0.3",
+    "expo-linking": "^57.0.9",
+    "expo-localization": "^57.0.1",
+    "expo-location": "^57.0.16",
+    "expo-router": "~57.0.20",
+    "expo-secure-store": "^57.0.3",
+    "expo-splash-screen": "^57.0.8",
+    "expo-system-ui": "^57.0.3",
+    "expo-web-browser": "^57.0.2",
+    "react": "catalog:react",
+    "react-native": "catalog:react",
+    "react-native-ble-manager": "^12.5.2",
+    "react-native-safe-area-context": "~5.7.0",
+    "react-native-svg": "15.15.4"
+  },
+  "devDependencies": {
+    "@rozumari/oxlint": "workspace:*",
+    "@rozumari/tsconfig": "workspace:*",
+    "@types/react": "catalog:react",
+    "tailwindcss": "catalog:tailwind",
+    "typescript": "catalog:dev",
+    "uniwind": "catalog:tailwind"
+  },
+  "expo": {
+    "install": {
+      "exclude": [
+        "typescript"
+      ]
+    }
   }
 }

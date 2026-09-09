@@ -26,7 +26,7 @@ import {
 } from '@rozumari/ui/components/sidebar'
 import { Link } from 'react-router'
 
-import { useSession } from '@/lib/use-session'
+import { useSession } from '@/hooks/use-session'
 import { ThemeSwitcher } from '@/routes/dashboard/_components/dashboard-sidebar/theme-switcher'
 
 export function NavUser() {
@@ -101,7 +101,7 @@ export function NavUser() {
               />
               <DropdownMenuItem
                 render={
-                  <Link to='/dashboard/change-password'>
+                  <Link to='/dashboard/account/change-password'>
                     <KeyRoundIcon /> Change Password
                   </Link>
                 }

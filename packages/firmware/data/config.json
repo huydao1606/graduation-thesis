@@ -1,5 +1,7 @@
 {
   "utc": 7,
+  "language": "en",
+  "sync_time": "04:00",
 
   "wifi": {
     "ssid": "",
@@ -12,8 +14,7 @@
   },
 
   "api": {
-    "host": "",
-    "port": 443,
+    "url": "",
     "token": "",
     "bypass_token": ""
   },

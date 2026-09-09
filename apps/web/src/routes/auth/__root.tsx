@@ -1,11 +1,31 @@
 import { Card } from '@rozumari/ui/components/card'
-import { Navigate, Outlet } from 'react-router'
+import { Loader2Icon } from '@rozumari/ui/components/icons'
+import { useIsomorphicLayoutEffect } from '@rozumari/ui/hooks/use-isomorphic-layout-effect'
+import { Outlet, useNavigate } from 'react-router'
 
-import { useSession } from '@/lib/use-session'
+import { useSession } from '@/hooks/use-session'
 
 export default function AuthRoot() {
-  const { user } = useSession()
-  if (user) return <Navigate to='/dashboard' replace />
+  const { status } = useSession()
+  const navigate = useNavigate()
+
+  useIsomorphicLayoutEffect(() => {
+    let isMounted = true
+
+    if (status === 'authenticated' && isMounted)
+      navigate('/dashboard', { replace: true })
+
+    return () => {
+      isMounted = false
+    }
+  }, [navigate, status])
+
+  if (status === 'loading')
+    return (
+      <div className='flex h-screen items-center justify-center'>
+        <Loader2Icon className='size-8 animate-spin' />
+      </div>
+    )
 
   return (
     <main className='grid min-h-dvh place-items-center md:px-4'>

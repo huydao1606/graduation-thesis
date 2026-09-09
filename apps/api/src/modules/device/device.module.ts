@@ -1,4 +1,5 @@
 import * as Layer from 'effect/Layer'
+import * as Command from 'effect/unstable/cli/Command'
 
 import type { AppModule } from '@/modules/app.module'
 
@@ -10,9 +11,10 @@ import { ShowDeviceUseCase } from '@/modules/device/application/use-case/show-de
 import { UpdateCompartmentUseCase } from '@/modules/device/application/use-case/update-compartment.use-case'
 import { UpdateDeviceUseCase } from '@/modules/device/application/use-case/update-device.use-case'
 import { DeviceInfrastructureModule } from '@/modules/device/infrastructure/infrastructure.module'
+import { DeviceServiceLayer } from '@/modules/device/infrastructure/services/device.service'
 import { deviceCommand } from '@/modules/device/presentation/cli/device.command'
+import { DeviceIoTController } from '@/modules/device/presentation/http/device-iot.controller'
 import { deviceController } from '@/modules/device/presentation/http/device.controller'
-import { iotController } from '@/modules/device/presentation/http/iot.controller'
 import { deviceMiddleware } from '@/modules/device/presentation/middleware/device.middleware'
 
 export class DeviceModule {
@@ -34,18 +36,16 @@ export class DeviceModule {
     const layer = Layer.provideMerge(useCaseLayer, infrastructureLayer)
 
     return {
-      controller: Layer.merge(deviceController, iotController).pipe(
+      controller: Layer.merge(deviceController, DeviceIoTController).pipe(
         Layer.provide(layer)
       ),
 
-      command: deviceCommand,
+      command: deviceCommand.pipe(Command.provide(layer)),
 
       exports: {
-        layer,
+        middleware: deviceMiddleware.pipe(Layer.provide(layer)),
 
-        middlewares: {
-          device: deviceMiddleware.pipe(Layer.provide(layer)),
-        },
+        deviceService: DeviceServiceLayer.pipe(Layer.provide(layer)),
       },
     }
   }

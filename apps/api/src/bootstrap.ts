@@ -7,31 +7,21 @@ import * as Etag from 'effect/unstable/http/Etag'
 import * as HttpRouter from 'effect/unstable/http/HttpRouter'
 
 import { AppModule } from '@/modules/app.module'
-import { FacebookProvider } from '@/modules/auth/infrastructure/oauth/providers/facebook.provider'
-import { GoogleProvider } from '@/modules/auth/infrastructure/oauth/providers/google.provider'
+import { FacebookProvider } from '@/modules/auth/infrastructure/services/providers/facebook.provider'
+import { GoogleProvider } from '@/modules/auth/infrastructure/services/providers/google.provider'
 import { env } from '@/shared/env'
-import { Jwt } from '@/shared/infrastructure/jwt'
-import { ResendService } from '@/shared/infrastructure/third-party/resend/resend.service'
-import { StreamService } from '@/shared/stream.service'
 
 function bootstrap() {
   const { routes } = AppModule.create({
     persistence: 'drizzle',
-    auth: {
-      secret: env.AUTH_SECRET,
-      providers: [
-        new FacebookProvider(env.AUTH_FACEBOOK_ID, env.AUTH_FACEBOOK_SECRET),
-        new GoogleProvider(env.AUTH_GOOGLE_ID, env.AUTH_GOOGLE_SECRET),
-      ],
-    },
+    providers: [
+      new FacebookProvider(env.AUTH_FACEBOOK_ID, env.AUTH_FACEBOOK_SECRET),
+      new GoogleProvider(env.AUTH_GOOGLE_ID, env.AUTH_GOOGLE_SECRET),
+    ],
   })
 
   const { handler } = HttpRouter.toWebHandler(
     Layer.provide(routes, [
-      ResendService.layer,
-      StreamService.layer,
-      Jwt.layer,
-
       HttpRouter.cors({
         allowedOrigins:
           env.VERCEL_ENV === 'preview' && env.VERCEL_BRANCH_URL
@@ -50,11 +40,11 @@ function bootstrap() {
         credentials: true,
       }),
 
+      Layer.succeed(DateTime.CurrentTimeZone, env.TIMEZONE),
       Layer.succeed(
         References.MinimumLogLevel,
-        env.NODE_ENV === 'production' ? 'Info' : 'Debug'
+        env.NODE_ENV === 'development' ? 'Debug' : 'Info'
       ),
-      Layer.succeed(DateTime.CurrentTimeZone, env.TIMEZONE),
 
       BunHttpPlatform.layer,
       BunServices.layer,

@@ -13,13 +13,14 @@ env:
   TURBO_TOKEN: ${{ secrets.TURBO_TOKEN }}
 
 jobs:
-  publish:
+  release:
     runs-on: ubuntu-latest
     permissions:
       contents: write
-      id-token: write
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
+        with:
+          token: ${{ secrets.PAT_TOKEN }}
       - uses: ./tools/github/actions/setup
 
       - name: Version & publish packages

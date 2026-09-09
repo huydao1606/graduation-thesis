@@ -1,52 +1,59 @@
 import { Api } from '@rozumari/contract'
-import * as Effect from 'effect/Effect'
 import * as Layer from 'effect/Layer'
 import * as Command from 'effect/unstable/cli/Command'
 import * as HttpApiBuilder from 'effect/unstable/httpapi/HttpApiBuilder'
 import * as HttpApiScalar from 'effect/unstable/httpapi/HttpApiScalar'
 import * as OpenApi from 'effect/unstable/httpapi/OpenApi'
 
-import type { BaseProvider } from '@/modules/auth/infrastructure/oauth/providers/base.provider'
+import type { BaseProvider } from '@/modules/auth/infrastructure/services/providers/base.provider'
 
 import { AuthModule } from '@/modules/auth/auth.module'
+import { DashboardModule } from '@/modules/dashboard/dashboard.module'
 import { DeviceModule } from '@/modules/device/device.module'
 import { HomeModule } from '@/modules/home/home.module'
+import { NotificationModule } from '@/modules/notification/notification.module'
 import { ScheduleModule } from '@/modules/schedule/schedule.module'
 import { UserModule } from '@/modules/user/user.module'
+import { InfrastructureModule } from '@/shared/infrastructure/infrastructure.module'
 
 import * as pkgJson from '../../package.json' with { type: 'json' }
 
 export class AppModule {
   public static create(config: AppModule.Config) {
-    const { persistence, auth } = config
+    const { persistence, providers } = config
+
+    const infrastructureLayer = InfrastructureModule.create(persistence)
 
     const homeModule = HomeModule.create()
+    const deviceModule = DeviceModule.create({ persistence })
+    const notificationModule = NotificationModule.create(
+      { persistence },
+      deviceModule.exports.deviceService
+    )
+    const scheduleModule = ScheduleModule.create({ persistence })
     const userModule = UserModule.create({ persistence })
     const authModule = AuthModule.create(
-      { persistence, auth },
-      { userService: userModule.exports.services.userService }
+      { persistence, providers },
+      userModule.exports.userService
     )
 
-    const deviceModule = DeviceModule.create({ persistence })
-    const scheduleModule = ScheduleModule.create({ persistence })
-
-    const deviceControllerWithSchedule = deviceModule.controller.pipe(
-      Layer.provide(scheduleModule.exports.layer)
-    )
+    const dashboardModule = DashboardModule.create({ persistence })
 
     const controllerLayer = Layer.mergeAll(
       homeModule.controller,
+      deviceModule.controller,
+      notificationModule.controller,
+      scheduleModule.controller,
       userModule.controller,
       authModule.controller,
-      deviceControllerWithSchedule,
-      scheduleModule.controller
+
+      dashboardModule.controller
     ).pipe(
       Layer.provide([
-        authModule.exports.middlewares.auth,
-        authModule.exports.middlewares.admin,
-
-        deviceModule.exports.middlewares.device,
-      ])
+        authModule.exports.middleware,
+        deviceModule.exports.middleware,
+      ]),
+      Layer.provide(infrastructureLayer)
     )
 
     const apiLive = HttpApiBuilder.layer(Api, {
@@ -71,11 +78,10 @@ export class AppModule {
 
     const cli = Command.run(
       Command.make(pkgJson.name).pipe(
-        Command.withSubcommands([userModule.command, deviceModule.command])
+        Command.withSubcommands([deviceModule.command, userModule.command]),
+        Command.provide(infrastructureLayer)
       ),
       { version: pkgJson.version }
-    ).pipe(
-      Effect.provide([userModule.exports.layer, deviceModule.exports.layer])
     )
 
     return { routes, cli }
@@ -86,9 +92,6 @@ export namespace AppModule {
   export interface Config {
     persistence: 'in-memory' | 'drizzle'
 
-    auth: {
-      secret: string
-      providers: BaseProvider[]
-    }
+    providers: BaseProvider[]
   }
 }

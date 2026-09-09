@@ -1,3 +1,56 @@
+## @rozumari/web@0.0.20
+
+### Bug Fixes & Improvements
+
+- **Branding:** Updated app icon branding for both web and mobile applications.
+- **Fix:** Fixed timezone offset issues affecting schedule timing and notifications.
+
+## @rozumari/web@0.0.18
+
+### Feature Additions & Mobile Navigation Restructuring
+
+### `@rozumari/api`
+
+- Added endpoint for fetching unread notifications count.
+
+### `@rozumari/web`
+
+- Fixed and polished UI layouts and styling across core components.
+
+### `@rozumari/mobile`
+
+- Added schedule viewing feature.
+- Implemented notification management flow (list view and detail inspector).
+- Restructured navigation architecture: organized root-level tabs with nested stack navigators for improved screen isolation and deep linking.
+
+## @rozumari/web@0.0.17
+
+### Fix various UI errors and component rendering glitches:
+
+- Resolved layout alignment and spacing issues in core UI components.
+- Updated skeleton fallbacks to match exact component structures.
+- Improved overall visual stability and edge-case handling.
+
+## @rozumari/web@0.0.16
+
+### Add schedules management and schedule creation pages
+
+- Added schedules view with weekly navigation, skeleton loading, and empty states
+- Created form for setting up medication dispensing schedules with compartment items and time pickers
+- Updated API contracts and UI components to support schedule management
+
+### Implement user and admin dashboards with real-time analytics charts and low stock alerts.
+
+- Added `AdminDashboard` component featuring medication schedule metrics, device connectivity status, and alert logs using Shadcn Charts.
+- Added `UserDashboard` component displaying daily dose schedules, device status, notifications, and low-stock medicine compartment alerts.
+- Added in-memory repository implementations and contracts for dashboard data querying.
+
+## @rozumari/web@0.0.15
+
+### Add Notification UI
+
+- Implemented a new Notification UI component for displaying notifications to users.
+
 ## @rozumari/web@0.0.14
 
 ### Summary of Changes

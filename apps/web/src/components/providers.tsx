@@ -7,6 +7,8 @@ import { QueryClientProvider } from '@tanstack/react-query'
 import { ThemeProvider } from 'next-themes'
 import { NuqsAdapter } from 'nuqs/adapters/react-router/v8'
 
+import { SessionProvider } from '@/hooks/use-session'
+
 let clientQueryClientSingleton: QueryClient | undefined
 const getQueryClient = () => {
   if (typeof window === 'undefined') return createQueryClient()
@@ -29,7 +31,9 @@ export function Providers({
       <ToastProvider>
         <TooltipProvider>
           <QueryClientProvider client={queryClient}>
-            <NuqsAdapter>{children}</NuqsAdapter>
+            <SessionProvider>
+              <NuqsAdapter>{children}</NuqsAdapter>
+            </SessionProvider>
           </QueryClientProvider>
         </TooltipProvider>
       </ToastProvider>
