@@ -3,20 +3,23 @@ import ujson
 from machine import Pin
 
 from lib.api import Api
+from lib.pins import Pins
 from tasks.sync_schedule import SyncSchedule
-
-led = Pin("LED", Pin.OUT)
 
 
 class Streaming:
     __instance: Streaming | None = None
 
-    api: Api
-    sync_schedule: SyncSchedule
+    _api: Api
+    _led: Pin
+    _sync_schedule: SyncSchedule
 
     def __init__(self) -> None:
-        self.api = Api.create()
-        self.sync_schedule = SyncSchedule.create()
+        self._api = Api.create()
+        self._sync_schedule = SyncSchedule.create()
+
+        pins = Pins.create()
+        self._led = pins.led
 
     def _is_digit(self, val: str) -> bool:
         try:
@@ -51,11 +54,11 @@ class Streaming:
 
         if action == "led":
             print(f"[Stream] Setting LED state to: {payload}")
-            led.value(int(payload))  # pyright: ignore[reportArgumentType]
+            self._led.value(int(payload))  # pyright: ignore[reportArgumentType]
 
         elif action == "sync_schedule":
             print("[Stream] Syncing schedule...")
-            await self.sync_schedule.execute()
+            await self._sync_schedule.execute()
 
     async def start(self) -> None:
         """Start continuous SSE streaming listener loop with backoff logic."""
@@ -68,7 +71,7 @@ class Streaming:
             try:
                 await uasyncio.sleep_ms(20)
 
-                await self.api.stream(
+                await self._api.stream(
                     endpoint="/api/devices/subscribe",
                     callback=self._handle_payload,
                     timeout=30,
