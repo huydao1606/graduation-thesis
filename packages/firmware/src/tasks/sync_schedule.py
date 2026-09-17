@@ -20,7 +20,7 @@ class SyncSchedule:
         self.api = Api.create()
         self.schedule = Schedule.create()
 
-    async def sync(self):
+    async def execute(self):
         """
         Fetch today's schedule from the server using the current system date and persist it locally.
 
@@ -65,7 +65,7 @@ class SyncSchedule:
                     print(
                         f"[SYNC] It's past {sync_hour}:{sync_minute}. Starting daily schedule sync..."
                     )
-                    await self.sync()
+                    await self.execute()
                     last_synced_date = today_str
 
             except Exception as e:  # noqa: BLE001

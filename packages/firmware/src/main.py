@@ -9,6 +9,7 @@ from modules.ble import BLE
 from modules.wifi import WiFi
 from tasks.schedules import Schedules
 from tasks.streaming import Streaming
+from tasks.sync_info import SyncInfo
 from tasks.sync_schedule import SyncSchedule
 
 
@@ -20,6 +21,7 @@ class Bootstrap:
     streaming: Streaming | None = None
     schedules: Schedules | None = None
     sync_schedule: SyncSchedule | None = None
+    sync_info: SyncInfo | None = None
 
     switch: Pin
 
@@ -51,6 +53,7 @@ class Bootstrap:
         self.streaming = Streaming.create()
         self.schedules = Schedules.create()
         self.sync_schedule = SyncSchedule.create()
+        self.sync_info = SyncInfo.create()
 
         is_connected = await self.wifi.connect(force=True)
 
@@ -68,8 +71,11 @@ class Bootstrap:
                 )
                 await uasyncio.sleep(2)
 
+        print("[SETUP] Syncing device info...")
+        _ = await self.sync_info.execute()
+
         print("[SETUP] Syncing schedules...")
-        _ = await self.sync_schedule.sync()
+        _ = await self.sync_schedule.execute()
 
         gathered_tasks = uasyncio.gather(
             self.sync_schedule.start(),

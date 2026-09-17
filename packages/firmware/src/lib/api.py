@@ -75,7 +75,7 @@ class Api:
         writer = None
 
         try:
-            _ = gc.collect()  # Giải phóng RAM trước khi mở SSL socket
+            _ = gc.collect()
 
             if use_ssl:
                 reader, writer = await uasyncio.open_connection(host, port, ssl=True)
@@ -96,27 +96,21 @@ class Api:
             writer.write(req_data.encode("utf-8"))
             await writer.drain()
 
-            # Đọc line đầu tiên của Status Header
             first_line = await uasyncio.wait_for(reader.readline(), timeout=timeout)
             if not first_line or b"200" not in first_line:
-                status = first_line.decode().strip() if first_line else "No response"
-                print(f"[STREAM] Kết nối thất bại, status: {status}")
                 return
 
-            # Đọc bỏ header đến khi gặp dòng trống
             while True:
                 h_line = await reader.readline()
                 if h_line in (b"\r\n", b"\n", b""):
                     break
 
-            # Đọc stream
             while True:
                 try:
                     line_bytes = await uasyncio.wait_for(
                         reader.readline(), timeout=timeout
                     )
                 except uasyncio.TimeoutError:
-                    # Nếu timeout chỉ là do server yên ắng, ngắt loop để reconnect lại từ đầu
                     print("[STREAM] Reconnecting due to idle timeout...")
                     break
 

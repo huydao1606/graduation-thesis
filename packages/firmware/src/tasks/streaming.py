@@ -21,7 +21,7 @@ class Streaming:
     def _is_digit(self, val: str) -> bool:
         """Kiểm tra chuỗi chỉ chứa ký tự số (Chống lỗi tương thích MicroPython)."""
         try:
-            int(val, 16)  # Kiểm tra cả chuỗi Hex (Chunk size) lẫn Decimal
+            _ = int(val, 16)  # Kiểm tra cả chuỗi Hex (Chunk size) lẫn Decimal
             return True
         except ValueError:
             return False
@@ -32,7 +32,6 @@ class Streaming:
 
         clean_line = line.strip()
 
-        # Lọc bỏ các dòng trống, comment, keep-alive hoặc dòng chunk size (vd: '24')
         if not clean_line or clean_line.startswith(":") or self._is_digit(clean_line):
             return
 
@@ -59,7 +58,7 @@ class Streaming:
 
         elif action == "sync_schedule":
             print("[STREAM] Syncing schedule...")
-            await self.sync_schedule.sync()
+            await self.sync_schedule.execute()
 
     async def start(self) -> None:
         """Start continuous SSE streaming listener loop with backoff logic."""
