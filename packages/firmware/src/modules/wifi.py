@@ -1,3 +1,5 @@
+"""Firmware module implementation."""
+
 import network
 import uasyncio
 
@@ -49,10 +51,10 @@ class WiFi:
             timeout -= 1
 
         if wlan.isconnected():
-            print(f"\n[Setup] Connected to WiFi! IP: {wlan.ifconfig()[0]}")
+            print(f"[Setup] Connected to WiFi! IP: {wlan.ifconfig()[0]}")
             return True
         else:
-            print("\n[Setup] Failed to connect to WiFi.")
+            print("[Setup] Failed to connect to WiFi.")
             return False
 
     @classmethod

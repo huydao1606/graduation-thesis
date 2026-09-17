@@ -30,14 +30,14 @@ class Servo:
     async def drop(self, slot: str, quantity: int = 1, timeout_ms: int = 3000) -> bool:
         servo_obj = self.servo_map.get(slot)
         if not servo_obj:
-            print(f"[SERVO] Không tìm thấy Servo cho slot '{slot}'")
+            print(f"[SERVO] Servo not found for slot '{slot}'")
             return False
 
-        print(f"[SERVO] Slot {slot} | Bắt đầu nhả: {quantity} viên...")
+        print(f"[SERVO] Slot {slot} | Starting dispensing: {quantity} items...")
 
         for i in range(quantity):
             self._drop_detected = False
-            # Gán ngắt cảm biến
+            # Attach the sensor interrupt
             _ = self.sensor_pin.irq(trigger=Pin.IRQ_FALLING, handler=self._irq_handler)
 
             self.control(servo_obj, 1300)
@@ -48,26 +48,26 @@ class Servo:
             while not pill_dropped:
                 if self._drop_detected:
                     pill_dropped = True
-                    print(f"[SERVO] Slot {slot} | Viên thứ {i + 1} đã nhả thành công!")
+                    print(f"[SERVO] Slot {slot} | Item {i + 1} dispensed successfully!")
                     break
 
-                # Kiểm tra quá thời gian timeout (ví dụ: 3 giây)
+                # Check for timeout (for example, 3 seconds)
                 if time.ticks_diff(time.ticks_ms(), start_time) > timeout_ms:
-                    print(f"[SERVO] Slot {slot} Timeout ở viên thứ {i + 1}!")
+                    print(f"[SERVO] Slot {slot} Timeout while dispensing item {i + 1}!")
                     break
 
                 await uasyncio.sleep_ms(10)
 
-            # Tắt ngắt lập tức sau khi xong hoặc timeout
-            self.sensor_pin.irq(handler=None)
+            # Disable the interrupt immediately after completion or timeout
+            _ = self.sensor_pin.irq(handler=None)
             self.control(servo_obj, 0)
             await uasyncio.sleep_ms(300)
 
-            # Nếu không rớt viên nào thì báo thất bại luôn
+            # Report failure if no item was dispensed
             if not pill_dropped:
                 return False
 
-        print(f"[SERVO] Slot {slot} đã nhả đủ {quantity} viên!")
+        print(f"[SERVO] Slot {slot} successfully dispensed {quantity} items!")
         return True
 
     @classmethod

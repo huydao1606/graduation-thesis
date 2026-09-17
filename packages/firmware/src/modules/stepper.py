@@ -1,3 +1,5 @@
+"""Firmware module implementation."""
+
 import uasyncio
 from machine import Pin
 

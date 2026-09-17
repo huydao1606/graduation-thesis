@@ -39,6 +39,8 @@ class Schedule:
 
         :return: List of schedule dictionaries.
         """
+        if not self._schedules or len(self._schedules) == 0:
+            _ = self.load_schedules()
         return self._schedules
 
     async def update_status(self, schedule_id: str, new_status: str) -> bool:

@@ -19,15 +19,13 @@ class Streaming:
         self.sync_schedule = SyncSchedule.create()
 
     def _is_digit(self, val: str) -> bool:
-        """Kiểm tra chuỗi chỉ chứa ký tự số (Chống lỗi tương thích MicroPython)."""
         try:
-            _ = int(val, 16)  # Kiểm tra cả chuỗi Hex (Chunk size) lẫn Decimal
+            _ = int(val, 16)
             return True
         except ValueError:
             return False
 
     async def _handle_payload(self, line: str) -> None:
-        """Parse raw SSE payload lines and trigger hardware or software actions."""
         await uasyncio.sleep_ms(10)
 
         clean_line = line.strip()
@@ -43,7 +41,6 @@ class Streaming:
         except Exception:  # noqa: BLE001
             return
 
-        # Chỉ xử lý khi data trả về đúng dạng Dictionary
         if not isinstance(data, dict):
             return
 
@@ -62,7 +59,7 @@ class Streaming:
 
     async def start(self) -> None:
         """Start continuous SSE streaming listener loop with backoff logic."""
-        print("\n[STARTUP] Streaming task initiated...\n")
+        print("[STARTUP] Streaming task initiated...")
 
         retry_delay = 2
         max_delay = 60
@@ -78,7 +75,7 @@ class Streaming:
                 )
                 retry_delay = 2
             except Exception as e:  # noqa: BLE001
-                print(f"[STREAM] Error: {e}")
+                print(f"[STREAM] Error: {e}. Retrying in {retry_delay} seconds...")
 
             await uasyncio.sleep(retry_delay)
             retry_delay = min(retry_delay * 2, max_delay)

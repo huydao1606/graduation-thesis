@@ -99,4 +99,4 @@ if __name__ == "__main__":
     try:
         uasyncio.run(bootstrap.start())
     except KeyboardInterrupt:
-        print("Program interrupted by user.")
+        print("[CLEANUP] Program interrupted by user.")

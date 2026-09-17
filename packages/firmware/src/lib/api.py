@@ -46,17 +46,25 @@ class Api:
             query_string = "&".join(f"{key}={value}" for key, value in params.items())
             url = f"{url}?{query_string}"
 
+        res = None
+
         try:
-            await uasyncio.sleep(0)  # Nhường CPU trước khi gọi HTTP synchronous
+            await uasyncio.sleep(0)  # Yield CPU before calling synchronous HTTP code
             res = urequests.get(url, headers=self.base_headers)
             if res.status_code != 200:
                 return {"error": f"Status code: {res.status_code}"}
             return res.json()
         except Exception as e:  # noqa: BLE001
             return {"error": str(e)}
+        finally:
+            if "res" in locals():
+                res.close()  # pyright: ignore[reportOptionalMemberAccess]
+            _ = gc.collect()
 
     async def post(self, endpoint: str, data: dict | None = None) -> dict:
         url = f"{self.base_url}{endpoint}"
+        res = None
+
         try:
             await uasyncio.sleep(0)
             res = urequests.post(url, headers=self.base_headers, json=data)
@@ -65,6 +73,10 @@ class Api:
             return res.json()
         except Exception as e:  # noqa: BLE001
             return {"error": str(e)}
+        finally:
+            if "res" in locals():
+                res.close()  # pyright: ignore[reportOptionalMemberAccess]
+            _ = gc.collect()
 
     async def stream(self, endpoint: str, callback, timeout: int = 30) -> None:  # pyright: ignore[reportMissingParameterType]
         url = f"{self.base_url}{endpoint}"
@@ -135,7 +147,7 @@ class Api:
                     await writer.wait_closed()
                 except Exception:  # noqa: BLE001, S110
                     pass
-            _ = gc.collect()  # Dọn RAM sau khi đóng socket
+            _ = gc.collect()  # Release memory after closing the socket
 
     @classmethod
     def create(cls) -> Api:

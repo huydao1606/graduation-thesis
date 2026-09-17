@@ -9,7 +9,7 @@ from modules.servo import Servo
 
 
 class Schedules:
-    _instance = None
+    __instance = None
 
     def __init__(self) -> None:
         self.servo = Servo.create()
@@ -17,7 +17,7 @@ class Schedules:
         self.api = Api.create()
 
     async def start(self, schedules_data: list | None = None) -> None:
-        print("[STARTUP] Schedules task active...\n")
+        print("[STARTUP] Schedules task active...")
         last_time = ""
 
         while True:
@@ -37,7 +37,7 @@ class Schedules:
 
                     sec = now[5] if len(now) > 5 else 0
                     print(
-                        f"\n[SCHEDULE] [{cur_date} {cur_time}:{sec:02d}] Check schedules..."
+                        f"[SCHEDULE] [{cur_date} {cur_time}:{sec:02d}] Check schedules..."
                     )
                     print_table(schedules, keys=["id", "date", "time", "status"])
 
@@ -53,7 +53,7 @@ class Schedules:
                         ):
                             sch_id = item_sch.get("id")
                             items = item_sch.get("items", [])
-                            print(f"\n---> EXECUTE SCHEDULE {sch_id}")
+                            print(f"---> EXECUTE SCHEDULE {sch_id}")
 
                             slot_errors = []
 
@@ -62,7 +62,7 @@ class Schedules:
                                 qty = item.get("quantity", 1)
 
                                 print(
-                                    f"[SCHEDULE] Gọi Servo nhả Slot '{slot}' x {qty} viên..."
+                                    f"[SCHEDULE] Trigger servo dispensing for slot '{slot}' x {qty} items..."
                                 )
                                 success = await self.servo.drop(slot=slot, quantity=qty)
 
@@ -71,7 +71,9 @@ class Schedules:
                                 await uasyncio.sleep(1.0)
 
                             if len(slot_errors) == 0:
-                                print(f"[SCHEDULE] Lịch {sch_id} đã nhả đủ thuốc!")
+                                print(
+                                    f"[SCHEDULE] Schedule {sch_id} dispensed successfully!"
+                                )
                                 _ = await self.schedule.update_status(
                                     str(sch_id), "completed"
                                 )
@@ -87,7 +89,7 @@ class Schedules:
                                 )
 
                             else:
-                                print(f"[SCHEDULE] Lịch {sch_id} thất bại!")
+                                print(f"[SCHEDULE] Schedule {sch_id} failed!")
                                 _ = await self.schedule.update_status(
                                     str(sch_id), "failed"
                                 )
@@ -105,12 +107,12 @@ class Schedules:
             except Exception as e:  # noqa: BLE001
                 print(f"[SCHEDULE] Error: {e}")
 
-            # Tính toán chính xác ms còn lại đến giây tiếp theo để chống trôi thời gian
+            # Calculate the exact milliseconds remaining until the next second to prevent time drift
             ms_to_next_second = 1000 - (time.ticks_ms() % 1000)
             await uasyncio.sleep_ms(ms_to_next_second)
 
     @classmethod
     def create(cls) -> Schedules:
-        if cls._instance is None:
-            cls._instance = Schedules()
-        return cls._instance
+        if cls.__instance is None:
+            cls.__instance = Schedules()
+        return cls.__instance
