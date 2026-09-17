@@ -9,16 +9,16 @@ from lib.utils import get_current_time
 class SyncSchedule:
     __instance: SyncSchedule | None = None
 
-    api: Api
-    schedule: Schedule
-    sync_time: str
+    _api: Api
+    _schedule: Schedule
+    _sync_time: str
 
     def __init__(self) -> None:
         config = Config.create()
-        self.sync_time = config.get("sync_time", "04:00:00")
+        self._sync_time = config.get("sync_time", "04:00:00")
 
-        self.api = Api.create()
-        self.schedule = Schedule.create()
+        self._api = Api.create()
+        self._schedule = Schedule.create()
 
     async def execute(self):
         """
@@ -34,8 +34,8 @@ class SyncSchedule:
         today = get_current_time()
         today = f"{today[0]:04d}-{today[1]:02d}-{today[2]:02d}"
 
-        resp = await self.api.get("/api/schedules/today", params={"date": today})
-        is_saved = self.schedule.save_schedules(resp.get("data", []))
+        resp = await self._api.get("/api/schedules/today", params={"date": today})
+        is_saved = self._schedule.save_schedules(resp.get("data", []))
 
         if is_saved:
             print(f"[SyncSchedule] Schedules for {today} synced successfully.")
@@ -48,10 +48,10 @@ class SyncSchedule:
 
         :return: None
         """
-        print("[Startup] SyncSchedule task initiated...", {"sync_time": self.sync_time})
+        print("[Startup] SyncSchedule task initiated...", {"sync_time": self._sync_time})
         last_synced_date = None
 
-        sync_hour, sync_minute = map(int, self.sync_time.split(":"))
+        sync_hour, sync_minute = map(int, self._sync_time.split(":"))
 
         while True:
             try:

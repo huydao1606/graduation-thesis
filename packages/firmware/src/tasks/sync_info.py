@@ -5,10 +5,10 @@ from lib.config import Config
 class SyncInfo:
     __instance: SyncInfo | None = None
 
-    api: Api
+    _api: Api
 
     def __init__(self):
-        self.api = Api.create()
+        self._api = Api.create()
 
     async def execute(self):
         """
@@ -18,7 +18,7 @@ class SyncInfo:
         """
         config = Config.create()
 
-        resp = await self.api.get("/api/devices/info")
+        resp = await self._api.get("/api/devices/info")
         if resp.get("error") is not None:
             print(f"[SyncInfo] Error fetching device info: {resp.get('error')}")
 

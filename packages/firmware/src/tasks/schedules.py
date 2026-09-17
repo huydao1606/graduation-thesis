@@ -11,10 +11,14 @@ from modules.servo import Servo
 class Schedules:
     __instance = None
 
+    _servo: Servo
+    _schedule: Schedule
+    _api: Api
+
     def __init__(self) -> None:
-        self.servo = Servo.create()
-        self.schedule = Schedule.create()
-        self.api = Api.create()
+        self._servo = Servo.create()
+        self._schedule = Schedule.create()
+        self._api = Api.create()
 
     async def start(self, schedules_data: list | None = None) -> None:
         """Run the schedule polling loop and execute due schedules."""
@@ -32,7 +36,7 @@ class Schedules:
                     schedules = (
                         schedules_data
                         if schedules_data is not None
-                        else self.schedule.get_schedules()
+                        else self._schedule.get_schedules()
                     )
 
                     sec = now[5] if len(now) > 5 else 0
@@ -68,7 +72,7 @@ class Schedules:
                             print(
                                 f"[Schedule] Dispensing slot '{slot}' with quantity {quantity}..."
                             )
-                            success = await self.servo.drop(
+                            success = await self._servo.drop(
                                 slot=slot,
                                 quantity=quantity,
                             )
@@ -97,10 +101,10 @@ class Schedules:
                             print(
                                 f"[Schedule] Schedule {schedule_id} failed: {len(required_failures)} required item(s) and {len(optional_failures)} optional item(s) failed."
                             )
-                            _ = await self.schedule.update_status(
+                            _ = await self._schedule.update_status(
                                 str(schedule_id), "failed"
                             )
-                            _ = await self.api.post(
+                            _ = await self._api.post(
                                 "/api/notifications/send",
                                 data={
                                     "scheduleId": str(schedule_id),
@@ -118,10 +122,10 @@ class Schedules:
                             print(
                                 f"[Schedule] Schedule {schedule_id} completed with {len(optional_failures)} optional item(s) not dispensed."
                             )
-                            _ = await self.schedule.update_status(
+                            _ = await self._schedule.update_status(
                                 str(schedule_id), "completed"
                             )
-                            _ = await self.api.post(
+                            _ = await self._api.post(
                                 "/api/notifications/send",
                                 data={
                                     "scheduleId": str(schedule_id),
@@ -139,10 +143,10 @@ class Schedules:
                             print(
                                 f"[Schedule] Schedule {schedule_id} dispensed successfully."
                             )
-                            _ = await self.schedule.update_status(
+                            _ = await self._schedule.update_status(
                                 str(schedule_id), "completed"
                             )
-                            _ = await self.api.post(
+                            _ = await self._api.post(
                                 "/api/notifications/send",
                                 data={
                                     "scheduleId": str(schedule_id),

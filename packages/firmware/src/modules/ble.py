@@ -13,22 +13,22 @@ _CHAR_TX_UUID = ubluetooth.UUID("09cbb497-1c8a-4ad6-b196-3459c1820a1a")
 class BLE:
     __instance: BLE | None = None
 
-    handle_rx: memoryview[int] | None = None
-    handle_tx: memoryview[int] | None = None
-    conn_handle: memoryview[int] | None = None
+    _handle_rx: memoryview[int] | None = None
+    _handle_tx: memoryview[int] | None = None
+    _conn_handle: memoryview[int] | None = None
     _config: dict | None = None
 
     def __init__(self) -> None:
         config = Config.create()
         self._config = config.get("device", {})
 
-        self.rx_buffer = bytearray()
-        self.send_lock = uasyncio.Lock()
-        self.handler = BLEHandler(self)
+        self._rx_buffer = bytearray()
+        self._send_lock = uasyncio.Lock()
+        self._handler = BLEHandler(self)
 
-        self.ble = ubluetooth.BLE()
-        self.ble.active(True)
-        _ = self.ble.irq(self._irq)
+        self._ble = ubluetooth.BLE()
+        self._ble.active(True)
+        _ = self._ble.irq(self._irq)
 
         service = (
             _CONFIG_SERVICE_UUID,
@@ -37,9 +37,9 @@ class BLE:
                 (_CHAR_TX_UUID, 0x0002 | 0x0010),  # READ | NOTIFY
             ),
         )
-        handles = self.ble.gatts_register_services((service,))
-        self.handle_rx, self.handle_tx = handles[0]
-        self.ble.gatts_set_buffer(self.handle_rx, 512, True)
+        handles = self._ble.gatts_register_services((service,))
+        self._handle_rx, self._handle_tx = handles[0]
+        self._ble.gatts_set_buffer(self._handle_rx, 512, True)
 
     def start_advertising(self) -> None:
         """
@@ -52,7 +52,7 @@ class BLE:
 
         :return: None
         """
-        if not self.ble or self._config is None:
+        if not self._ble or self._config is None:
             return
 
         name = self._config.get("name", "Rozumari")
@@ -63,7 +63,7 @@ class BLE:
         uuid_bytes = bytes(_CONFIG_SERVICE_UUID)  # pyright: ignore[reportArgumentType]
         payload.extend(bytearray([len(uuid_bytes) + 1, 0x07]) + uuid_bytes)
 
-        self.ble.gap_advertise(625000, adv_data=payload)  # pyright: ignore[reportCallIssue]
+        self._ble.gap_advertise(625000, adv_data=payload)  # pyright: ignore[reportCallIssue]
         print(f"Advertising as {name}...")
 
     def _irq(self, event: int, data: tuple) -> None:
@@ -86,25 +86,25 @@ class BLE:
 
         if event == 1:  # Connect
             print("Device connected")
-            self.conn_handle = data[0]
-            self.rx_buffer = bytearray()
+            self._conn_handle = data[0]
+            self._rx_buffer = bytearray()
 
-            _ = uasyncio.create_task(self.handler.on_connect())
+            _ = uasyncio.create_task(self._handler.on_connect())
         elif event == 2:  # Disconnect
             print("Device disconnected")
-            self.conn_handle = None
-            self.rx_buffer = bytearray()
+            self._conn_handle = None
+            self._rx_buffer = bytearray()
             _ = uasyncio.create_task(self._async_start_advertising())
 
         elif event == 3:  # Write
-            if self.handle_rx is None:
+            if self._handle_rx is None:
                 return
 
             _, val_handle = data
-            if val_handle == self.handle_rx:
-                chunk = self.ble.gatts_read(self.handle_rx)
+            if val_handle == self._handle_rx:
+                chunk = self._ble.gatts_read(self._handle_rx)
                 if chunk:
-                    self.rx_buffer.extend(chunk)
+                    self._rx_buffer.extend(chunk)
                     if b"\n" in chunk:
                         _ = uasyncio.create_task(self._process_buffer())
 
@@ -127,7 +127,7 @@ class BLE:
         :param status: Integer status code or bitmasked payload parameter (0 to 31).
         :return: None
         """
-        if not self.ble or self.conn_handle is None or self.handle_tx is None:
+        if not self._ble or self._conn_handle is None or self._handle_tx is None:
             print("Cannot send: Not connected")
             return
 
@@ -141,14 +141,14 @@ class BLE:
             packet_bytes = bytes([((action & 0x07) << 5) | (status & 0x1F)])
             packet_type = "1 Byte"
 
-        async with self.send_lock:
-            self.ble.gatts_write(self.handle_tx, packet_bytes)
+        async with self._send_lock:
+            self._ble.gatts_write(self._handle_tx, packet_bytes)
             await uasyncio.sleep_ms(10)
 
             try:
-                self.ble.gatts_notify(self.conn_handle, self.handle_tx, packet_bytes)  # pyright: ignore[reportCallIssue]
+                self._ble.gatts_notify(self._conn_handle, self._handle_tx, packet_bytes)  # pyright: ignore[reportCallIssue]
             except TypeError:
-                self.ble.gatts_notify(self.conn_handle, self.handle_tx)  # pyright: ignore[reportArgumentType]
+                self._ble.gatts_notify(self._conn_handle, self._handle_tx)  # pyright: ignore[reportArgumentType]
 
             await uasyncio.sleep_ms(30)
             print(
@@ -161,7 +161,7 @@ class BLE:
 
         :return: True if connected, False otherwise.
         """
-        return self.conn_handle is not None
+        return self._conn_handle is not None
 
     def stop(self) -> None:
         """
@@ -169,16 +169,16 @@ class BLE:
 
         :return: None
         """
-        if not self.ble:
+        if not self._ble:
             return
-        self.ble.gap_advertise(0)
-        if self.conn_handle is not None:
+        self._ble.gap_advertise(0)
+        if self._conn_handle is not None:
             try:
-                _ = self.ble.gap_disconnect(self.conn_handle)
+                _ = self._ble.gap_disconnect(self._conn_handle)
             except Exception:  # noqa: BLE001, S110
                 pass
-            self.conn_handle = None
-        self.ble.active(False)
+            self._conn_handle = None
+        self._ble.active(False)
 
     async def _async_start_advertising(self) -> None:
         """
@@ -195,20 +195,20 @@ class BLE:
 
         :return: None
         """
-        if not self.rx_buffer:
+        if not self._rx_buffer:
             return
 
-        raw_str = self.rx_buffer.decode("utf-8", "ignore").strip()
+        raw_str = self._rx_buffer.decode("utf-8", "ignore").strip()
 
         try:
             data = ujson.loads(raw_str)
-            self.rx_buffer = bytearray()
+            self._rx_buffer = bytearray()
 
             action = data.get("action")
             payload = data.get("payload", {})
 
             if action:
-                await self.handler.handle_command(action, payload)
+                await self._handler.handle_command(action, payload)
 
         except Exception:  # noqa: BLE001, S110
             pass

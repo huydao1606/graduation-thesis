@@ -9,15 +9,15 @@ from lib.config import Config
 class Api:
     __instance: Api | None = None
 
-    base_url: str
-    base_headers: dict
+    _base_url: str
+    _base_headers: dict
 
     def __init__(self) -> None:
         config = Config.create()
         api_config: dict = config.get("api", {})
 
-        self.base_url = api_config.get("url", "")
-        self.base_headers = {
+        self._base_url = api_config.get("url", "")
+        self._base_headers = {
             "Authorization": f"Bearer {api_config.get('token')}",
             "x-vercel-protection-bypass": api_config.get("bypass_token"),
             "Content-Type": "application/json",
@@ -41,7 +41,7 @@ class Api:
         return proto, host, port, path
 
     async def get(self, endpoint: str, params: dict | None = None) -> dict:
-        url = f"{self.base_url}{endpoint}"
+        url = f"{self._base_url}{endpoint}"
         if params:
             query_string = "&".join(f"{key}={value}" for key, value in params.items())
             url = f"{url}?{query_string}"
@@ -50,7 +50,7 @@ class Api:
 
         try:
             await uasyncio.sleep(0)  # Yield CPU before calling synchronous HTTP code
-            res = urequests.get(url, headers=self.base_headers)
+            res = urequests.get(url, headers=self._base_headers)
             if res.status_code != 200:
                 return {"error": f"Status code: {res.status_code}"}
             return res.json()
@@ -62,12 +62,12 @@ class Api:
             _ = gc.collect()
 
     async def post(self, endpoint: str, data: dict | None = None) -> dict:
-        url = f"{self.base_url}{endpoint}"
+        url = f"{self._base_url}{endpoint}"
         res = None
 
         try:
             await uasyncio.sleep(0)
-            res = urequests.post(url, headers=self.base_headers, json=data)
+            res = urequests.post(url, headers=self._base_headers, json=data)
             if res.status_code not in (200, 201):
                 return {"error": f"Status code: {res.status_code}"}
             return res.json()
@@ -79,7 +79,7 @@ class Api:
             _ = gc.collect()
 
     async def stream(self, endpoint: str, callback, timeout: int = 30) -> None:  # pyright: ignore[reportMissingParameterType]
-        url = f"{self.base_url}{endpoint}"
+        url = f"{self._base_url}{endpoint}"
         proto, host, port, path = self._parse_url(url)
         use_ssl = proto == "https"
 
@@ -101,7 +101,7 @@ class Api:
                 "Cache-Control: no-cache",
                 "Connection: keep-alive",
             ]
-            for key, val in self.base_headers.items():
+            for key, val in self._base_headers.items():
                 req_lines.append(f"{key}: {val}")
 
             req_data = "\r\n".join(req_lines) + "\r\n\r\n"

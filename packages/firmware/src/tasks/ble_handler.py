@@ -26,7 +26,7 @@ class BLEHandler:
 
         :param ble_instance: The peripheral BLE instance used for communication.
         """
-        self.ble = ble_instance
+        self._ble = ble_instance
 
     async def handle_command(self, action: str, payload: dict) -> None:
         """
@@ -39,13 +39,13 @@ class BLEHandler:
         config = Config.create()
 
         if action == "ping":
-            await self.ble.send_code(ACTION_PONG, STATUS_SUCCESS)
+            await self._ble.send_code(ACTION_PONG, STATUS_SUCCESS)
 
         elif action == "check_wifi":
             ssid = payload.get("ssid")
             password = payload.get("password")
             if not ssid or not password:
-                return await self.ble.send_code(ACTION_CHECK_WIFI_RES, STATUS_FAIL)
+                return await self._ble.send_code(ACTION_CHECK_WIFI_RES, STATUS_FAIL)
 
             _ = uasyncio.create_task(self._handle_check_wifi(ssid, password))
 
@@ -53,36 +53,36 @@ class BLEHandler:
             ssid = payload.get("ssid")
             password = payload.get("password")
             if not ssid or not password:
-                return await self.ble.send_code(ACTION_SET_WIFI_RES, STATUS_FAIL)
+                return await self._ble.send_code(ACTION_SET_WIFI_RES, STATUS_FAIL)
 
             is_saved = config.set("wifi", {"ssid": ssid, "password": password})
             status = STATUS_SUCCESS if is_saved else STATUS_FAIL
-            await self.ble.send_code(ACTION_SET_WIFI_RES, status)
+            await self._ble.send_code(ACTION_SET_WIFI_RES, status)
 
         elif action == "set_utc":
             utc = payload.get("utc")
             if utc is None or not isinstance(utc, (int, float)):
-                return await self.ble.send_code(ACTION_SET_UTC_RES, STATUS_FAIL)
+                return await self._ble.send_code(ACTION_SET_UTC_RES, STATUS_FAIL)
 
             is_saved = config.set("utc", int(utc))
             status = STATUS_SUCCESS if is_saved else STATUS_FAIL
-            await self.ble.send_code(ACTION_SET_UTC_RES, status)
+            await self._ble.send_code(ACTION_SET_UTC_RES, status)
 
         elif action == "set_language":
             language = payload.get("language")
             if not language or not isinstance(language, str):
-                return await self.ble.send_code(ACTION_SET_LANGUAGE_RES, STATUS_FAIL)
+                return await self._ble.send_code(ACTION_SET_LANGUAGE_RES, STATUS_FAIL)
 
             is_saved = config.set("language", language)
             status = STATUS_SUCCESS if is_saved else STATUS_FAIL
-            await self.ble.send_code(ACTION_SET_LANGUAGE_RES, status)
+            await self._ble.send_code(ACTION_SET_LANGUAGE_RES, status)
 
         elif action == "set_sync_time":
             hours = payload.get("hours")
             minutes = payload.get("minutes")
             is_saved = config.set("sync_time", f"{hours:02}:{minutes:02}")
             status = STATUS_SUCCESS if is_saved else STATUS_FAIL
-            await self.ble.send_code(ACTION_SET_SYNC_TIME_RES, status)
+            await self._ble.send_code(ACTION_SET_SYNC_TIME_RES, status)
 
     async def on_connect(self) -> None:
         """
@@ -93,7 +93,7 @@ class BLEHandler:
 
         await uasyncio.sleep(1)
         status_code = self._build_device_info_status()
-        await self.ble.send_code(ACTION_SEND_DEVICE_INFO, status_code)
+        await self._ble.send_code(ACTION_SEND_DEVICE_INFO, status_code)
 
     async def _handle_check_wifi(self, ssid: str, password: str) -> None:
         """
@@ -106,7 +106,7 @@ class BLEHandler:
 
         is_connected = await WiFi.check_connection(ssid, password)
         status = STATUS_SUCCESS if is_connected else STATUS_FAIL
-        await self.ble.send_code(ACTION_CHECK_WIFI_RES, status)
+        await self._ble.send_code(ACTION_CHECK_WIFI_RES, status)
 
     def _build_device_info_status(self) -> int:
         """

@@ -9,13 +9,11 @@ from lib.config import Config
 class WiFi:
     __instance: WiFi | None = None
 
-    wifi: dict | None = None
-    device: dict | None = None
+    _wifi: dict | None = None
 
     def __init__(self):
         config = Config.create()
-        self.wifi = config.get("wifi")
-        self.device = config.get("device")
+        self._wifi = config.get("wifi")
 
     async def connect(self, force: bool = True) -> bool:
         """
@@ -29,7 +27,7 @@ class WiFi:
         :param force: Force a reconnection sequence even if already connected. Defaults to False.
         :return: True if connection is successful, False otherwise.
         """
-        if self.wifi is None or self.device is None:
+        if self._wifi is None:
             return False
 
         wlan = network.WLAN(network.STA_IF)
@@ -39,8 +37,8 @@ class WiFi:
             print(f"[Setup] Already connected to WiFi! IP: {wlan.ifconfig()[0]}")
             return True
 
-        ssid = self.wifi.get("ssid")
-        password = self.wifi.get("password")
+        ssid = self._wifi.get("ssid")
+        password = self._wifi.get("password")
         print(f"[Setup] Connecting to WiFi SSID: {ssid}...", end="")
 
         timeout = 30

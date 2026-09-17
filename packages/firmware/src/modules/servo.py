@@ -11,13 +11,13 @@ class Servo:
 
     def __init__(self) -> None:
         pins = Pins.create()
-        self.servo_map = {
+        self._servo_map = {
             "0-0": pins.servos[0],
             "0-1": pins.servos[1],
             "1-0": pins.servos[2],
             "1-1": pins.servos[3],
         }
-        self.sensor_pin = pins.sensor_drop
+        self._sensor_pin = pins.sensor_drop
         self._drop_detected = False
 
     def _irq_handler(self, _pin: Pin) -> None:
@@ -28,7 +28,7 @@ class Servo:
         servo.duty_u16(duty)
 
     async def drop(self, slot: str, quantity: int = 1, timeout_ms: int = 3000) -> bool:
-        servo_obj = self.servo_map.get(slot)
+        servo_obj = self._servo_map.get(slot)
         if not servo_obj:
             print(f"[Servo] Servo not found for slot '{slot}'")
             return False
@@ -38,7 +38,7 @@ class Servo:
         for i in range(quantity):
             self._drop_detected = False
             # Attach the sensor interrupt
-            _ = self.sensor_pin.irq(trigger=Pin.IRQ_FALLING, handler=self._irq_handler)
+            _ = self._sensor_pin.irq(trigger=Pin.IRQ_FALLING, handler=self._irq_handler)
 
             self.control(servo_obj, 1300)
 
@@ -59,7 +59,7 @@ class Servo:
                 await uasyncio.sleep_ms(10)
 
             # Disable the interrupt immediately after completion or timeout
-            _ = self.sensor_pin.irq(handler=None)
+            _ = self._sensor_pin.irq(handler=None)
             self.control(servo_obj, 0)
             await uasyncio.sleep_ms(300)
 

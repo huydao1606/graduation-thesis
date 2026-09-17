@@ -14,48 +14,48 @@ from tasks.sync_schedule import SyncSchedule
 
 
 class Bootstrap:
-    ble: BLE | None = None
-    wifi: WiFi | None = None
-    schedule: Schedule | None = None
+    _ble: BLE | None = None
+    _wifi: WiFi | None = None
+    _schedule: Schedule | None = None
 
-    streaming: Streaming | None = None
-    schedules: Schedules | None = None
-    sync_schedule: SyncSchedule | None = None
-    sync_info: SyncInfo | None = None
+    _streaming: Streaming | None = None
+    _schedules: Schedules | None = None
+    _sync_schedule: SyncSchedule | None = None
+    _sync_info: SyncInfo | None = None
 
-    switch: Pin
+    _switch: Pin
 
     def __init__(self) -> None:
         pins = Pins.create()
-        self.switch = pins.switch
+        self._switch = pins.switch
 
     async def _config_mode(self) -> None:
-        self.ble = BLE.create()
+        self._ble = BLE.create()
 
-        if self.ble.ble and not self.ble.ble.active():
-            self.ble.ble.active(True)
+        if self._ble.ble and not self._ble.ble.active():
+            self._ble.ble.active(True)
 
-        self.ble.start_advertising()
+        self._ble.start_advertising()
 
         try:
             print("[Config] Started. Waiting for switch to be released...")
-            while self.switch.value() == 0:
+            while self._switch.value() == 0:
                 await uasyncio.sleep_ms(100)
         finally:
-            self.ble.stop()
+            self._ble.stop()
             print("[Config] Stopped.")
 
     async def _normal_mode(self) -> None:
         _ = Config.create(force=True)
 
-        self.wifi = WiFi.create()
-        self.schedule = Schedule.create()
-        self.streaming = Streaming.create()
-        self.schedules = Schedules.create()
-        self.sync_schedule = SyncSchedule.create()
-        self.sync_info = SyncInfo.create()
+        self._wifi = WiFi.create()
+        self._schedule = Schedule.create()
+        self._streaming = Streaming.create()
+        self._schedules = Schedules.create()
+        self._sync_schedule = SyncSchedule.create()
+        self._sync_info = SyncInfo.create()
 
-        is_connected = await self.wifi.connect()
+        is_connected = await self._wifi.connect()
 
         print("[Setup] Syncing time...")
         retry_count, max_retries = 0, 3
@@ -72,20 +72,20 @@ class Bootstrap:
                 await uasyncio.sleep(2)
 
         print("[Setup] Syncing device info...")
-        _ = await self.sync_info.execute()
+        _ = await self._sync_info.execute()
 
         print("[Setup] Syncing schedules...")
-        _ = await self.sync_schedule.execute()
+        _ = await self._sync_schedule.execute()
 
         gathered_tasks = uasyncio.gather(
-            self.sync_schedule.start(),
-            self.streaming.start(),
-            self.schedules.start(),
+            self._sync_schedule.start(),
+            self._streaming.start(),
+            self._schedules.start(),
         )
         await gathered_tasks
 
     async def start(self) -> None:
-        switch_state = self.switch.value()
+        switch_state = self._switch.value()
 
         if switch_state == 0:
             await self._config_mode()
@@ -93,10 +93,10 @@ class Bootstrap:
             await self._normal_mode()
 
     async def stop(self) -> None:
-        if self.ble and self.ble.is_connected():
-            self.ble.stop()
-        if self.wifi:
-            self.wifi.disconnect()
+        if self._ble and self._ble.is_connected():
+            self._ble.stop()
+        if self._wifi:
+            self._wifi.disconnect()
 
 
 if __name__ == "__main__":

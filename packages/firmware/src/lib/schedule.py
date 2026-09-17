@@ -7,12 +7,12 @@ class Schedule:
     __instance: Schedule | None = None
 
     _schedules: list[dict]
-    api: Api
+    _api: Api
 
     def __init__(self, file_path: str) -> None:
-        self.path = file_path
+        self._path = file_path
         self._schedules = []
-        self.api = Api.create()
+        self._api = Api.create()
 
     def load_schedules(self) -> bool:
         """
@@ -21,16 +21,16 @@ class Schedule:
         :return: True if load was successful, False otherwise.
         """
         try:
-            with open(self.path, "r") as f:
+            with open(self._path, "r") as f:
                 data = ujson.load(f)
                 if isinstance(data, list):
                     self._schedules = data
                     return True
                 else:
-                    print(f"Data in {self.path} is not a list.")
+                    print(f"Data in {self._path} is not a list.")
                     return False
         except Exception as e:  # noqa: BLE001
-            print(f"Error loading schedules from {self.path}: {e}")
+            print(f"Error loading schedules from {self._path}: {e}")
             return False
 
     def get_schedules(self) -> list[dict]:
@@ -59,7 +59,7 @@ class Schedule:
                 update_success = self.save_schedules()
                 break
 
-        _ = await self.api.post(
+        _ = await self._api.post(
             f"/api/schedules/{schedule_id}/update-status",
             data={"status": new_status},
         )
@@ -77,11 +77,11 @@ class Schedule:
             self._schedules = schedules
 
         try:
-            with open(self.path, "w") as f:
+            with open(self._path, "w") as f:
                 ujson.dump(self._schedules, f)
             return True
         except Exception as e:  # noqa: BLE001
-            print(f"Error saving schedules to {self.path}: {e}")
+            print(f"Error saving schedules to {self._path}: {e}")
             return False
 
     @classmethod
