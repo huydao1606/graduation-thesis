@@ -41,6 +41,23 @@ class BLE:
         self._handle_rx, self._handle_tx = handles[0]
         self._ble.gatts_set_buffer(self._handle_rx, 512, True)
 
+    def is_ready(self) -> bool:
+        """
+        Check if the BLE peripheral is initialized and ready for operation.
+
+        :return: True if BLE is active, False otherwise.
+        """
+        return self._ble.active()
+
+    def activate(self) -> None:
+        """
+        Activate the BLE peripheral interface if not already active.
+
+        :return: None
+        """
+        if not self._ble.active():
+            self._ble.active(True)
+
     def start_advertising(self) -> None:
         """
         Construct GAP advertising payload and start broadcasting BLE presence.
@@ -56,6 +73,7 @@ class BLE:
             return
 
         name = self._config.get("name", "Rozumari")
+        name = name.strip()[:8]
 
         payload = bytearray([0x02, 0x01, 0x06])
         name_bytes = name.encode("utf-8")
@@ -64,7 +82,10 @@ class BLE:
         payload.extend(bytearray([len(uuid_bytes) + 1, 0x07]) + uuid_bytes)
 
         self._ble.gap_advertise(625000, adv_data=payload)  # pyright: ignore[reportCallIssue]
-        print(f"Advertising as {name}...")
+        _, _mac = self._ble.config("mac")
+        mac = ":".join(f"{byte:02X}" for byte in _mac)
+
+        print(f"Advertising as {name} ({mac})...")
 
     def _irq(self, event: int, data: tuple) -> None:
         """
@@ -162,6 +183,21 @@ class BLE:
         :return: True if connected, False otherwise.
         """
         return self._conn_handle is not None
+
+    def disconnect(self) -> None:
+        """
+        Disconnect the active central client without deactivating BLE.
+        """
+        if not self._ble or self._conn_handle is None:
+            return
+
+        try:
+            _ = self._ble.gap_disconnect(self._conn_handle)
+        except Exception:  # noqa: BLE001, S110
+            pass
+
+        self._conn_handle = None
+        self._rx_buffer = bytearray()
 
     def stop(self) -> None:
         """
