@@ -38,12 +38,12 @@ class Bootstrap:
         self.ble.start_advertising()
 
         try:
-            print("[CONFIG] Started. Waiting for switch to be released...")
+            print("[Config] Started. Waiting for switch to be released...")
             while self.switch.value() == 0:
                 await uasyncio.sleep_ms(100)
         finally:
             self.ble.stop()
-            print("[CONFIG] Stopped.")
+            print("[Config] Stopped.")
 
     async def _normal_mode(self) -> None:
         _ = Config.create(force=True)
@@ -55,26 +55,26 @@ class Bootstrap:
         self.sync_schedule = SyncSchedule.create()
         self.sync_info = SyncInfo.create()
 
-        is_connected = await self.wifi.connect(force=True)
+        is_connected = await self.wifi.connect()
 
-        print("[SETUP] Syncing time...")
+        print("[Setup] Syncing time...")
         retry_count, max_retries = 0, 3
         while is_connected and retry_count < max_retries:
             try:
                 ntptime.settime()
-                print("[SETUP] Time synced successfully.")
+                print("[Setup] Time synced successfully.")
                 break
             except Exception as e:  # noqa: BLE001
                 retry_count += 1
                 print(
-                    f"[SETUP] Failed to sync time (Attempt {retry_count}/{max_retries}): {e}"
+                    f"[Setup] Failed to sync time (Attempt {retry_count}/{max_retries}): {e}"
                 )
                 await uasyncio.sleep(2)
 
-        print("[SETUP] Syncing device info...")
+        print("[Setup] Syncing device info...")
         _ = await self.sync_info.execute()
 
-        print("[SETUP] Syncing schedules...")
+        print("[Setup] Syncing schedules...")
         _ = await self.sync_schedule.execute()
 
         gathered_tasks = uasyncio.gather(
@@ -92,6 +92,12 @@ class Bootstrap:
         else:
             await self._normal_mode()
 
+    async def stop(self) -> None:
+        if self.ble and self.ble.is_connected():
+            self.ble.stop()
+        if self.wifi:
+            self.wifi.disconnect()
+
 
 if __name__ == "__main__":
     bootstrap = Bootstrap()
@@ -99,4 +105,9 @@ if __name__ == "__main__":
     try:
         uasyncio.run(bootstrap.start())
     except KeyboardInterrupt:
-        print("[CLEANUP] Program interrupted by user.")
+        print("[Cleanup] Program interrupted by user.")
+    except Exception as error:  # noqa: BLE001
+        print(f"[Error] Unexpected error: {error}")
+    finally:
+        uasyncio.run(bootstrap.stop())
+        print("[Cleanup] Program stopped.")

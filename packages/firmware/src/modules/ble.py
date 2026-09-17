@@ -155,6 +155,14 @@ class BLE:
                 f"Sent {packet_type}: 0x{packet_bytes.hex().upper()} (Action: {action}, Status/Value: {status})"
             )
 
+    def is_connected(self) -> bool:
+        """
+        Check if a central client is currently connected to the BLE peripheral.
+
+        :return: True if connected, False otherwise.
+        """
+        return self.conn_handle is not None
+
     def stop(self) -> None:
         """
         Stop GAP advertising, disconnect active central clients, and deactivate BLE radio interface.

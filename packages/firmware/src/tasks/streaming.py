@@ -44,22 +44,22 @@ class Streaming:
         if not isinstance(data, dict):
             return
 
-        print(f"[STREAM] Received streaming payload: {data}")
+        print(f"[Stream] Received streaming payload: {data}")
 
         action = data.get("action")
         payload = data.get("payload")
 
         if action == "led":
-            print(f"[STREAM] Setting LED state to: {payload}")
+            print(f"[Stream] Setting LED state to: {payload}")
             led.value(int(payload))  # pyright: ignore[reportArgumentType]
 
         elif action == "sync_schedule":
-            print("[STREAM] Syncing schedule...")
+            print("[Stream] Syncing schedule...")
             await self.sync_schedule.execute()
 
     async def start(self) -> None:
         """Start continuous SSE streaming listener loop with backoff logic."""
-        print("[STARTUP] Streaming task initiated...")
+        print("[Startup] Streaming task initiated...")
 
         retry_delay = 2
         max_delay = 60
@@ -75,7 +75,7 @@ class Streaming:
                 )
                 retry_delay = 2
             except Exception as e:  # noqa: BLE001
-                print(f"[STREAM] Error: {e}. Retrying in {retry_delay} seconds...")
+                print(f"[Stream] Error: {e}. Retrying in {retry_delay} seconds...")
 
             await uasyncio.sleep(retry_delay)
             retry_delay = min(retry_delay * 2, max_delay)
@@ -85,8 +85,3 @@ class Streaming:
         if cls.__instance is None:
             cls.__instance = Streaming()
         return cls.__instance
-
-
-if __name__ == "__main__":
-    streaming = Streaming.create()
-    uasyncio.run(streaming.start())

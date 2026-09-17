@@ -30,10 +30,10 @@ class Servo:
     async def drop(self, slot: str, quantity: int = 1, timeout_ms: int = 3000) -> bool:
         servo_obj = self.servo_map.get(slot)
         if not servo_obj:
-            print(f"[SERVO] Servo not found for slot '{slot}'")
+            print(f"[Servo] Servo not found for slot '{slot}'")
             return False
 
-        print(f"[SERVO] Slot {slot} | Starting dispensing: {quantity} items...")
+        print(f"[Servo] Slot {slot} | Starting dispensing: {quantity} items...")
 
         for i in range(quantity):
             self._drop_detected = False
@@ -48,12 +48,12 @@ class Servo:
             while not pill_dropped:
                 if self._drop_detected:
                     pill_dropped = True
-                    print(f"[SERVO] Slot {slot} | Item {i + 1} dispensed successfully!")
+                    print(f"[Servo] Slot {slot} | Item {i + 1} dispensed successfully!")
                     break
 
                 # Check for timeout (for example, 3 seconds)
                 if time.ticks_diff(time.ticks_ms(), start_time) > timeout_ms:
-                    print(f"[SERVO] Slot {slot} Timeout while dispensing item {i + 1}!")
+                    print(f"[Servo] Slot {slot} Timeout while dispensing item {i + 1}!")
                     break
 
                 await uasyncio.sleep_ms(10)
@@ -67,7 +67,7 @@ class Servo:
             if not pill_dropped:
                 return False
 
-        print(f"[SERVO] Slot {slot} successfully dispensed {quantity} items!")
+        print(f"[Servo] Slot {slot} successfully dispensed {quantity} items!")
         return True
 
     @classmethod

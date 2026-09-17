@@ -17,7 +17,8 @@ class Schedules:
         self.api = Api.create()
 
     async def start(self, schedules_data: list | None = None) -> None:
-        print("[STARTUP] Schedules task active...")
+        """Run the schedule polling loop and execute due schedules."""
+        print("[Startup] Schedules task active...")
         last_time = ""
 
         while True:
@@ -28,7 +29,6 @@ class Schedules:
 
                 if cur_time != last_time:
                     last_time = cur_time
-
                     schedules = (
                         schedules_data
                         if schedules_data is not None
@@ -37,79 +37,131 @@ class Schedules:
 
                     sec = now[5] if len(now) > 5 else 0
                     print(
-                        f"[SCHEDULE] [{cur_date} {cur_time}:{sec:02d}] Check schedules..."
+                        f"[Schedule] [{cur_date} {cur_time}:{sec:02d}] Checking schedules..."
                     )
                     print_table(schedules, keys=["id", "date", "time", "status"])
 
-                    for item_sch in schedules:
-                        if item_sch.get("status", "pending") != "pending":
+                    for schedule_item in schedules:
+                        if schedule_item.get("status", "pending") != "pending":
                             continue
 
-                        sch_time = (item_sch.get("time") or "")[:5]
-                        sch_date = item_sch.get("date")
+                        schedule_time = (schedule_item.get("time") or "")[:5]
+                        schedule_date = schedule_item.get("date")
 
-                        if sch_time == cur_time and (
-                            not sch_date or sch_date == cur_date
+                        if schedule_time != cur_time or (
+                            schedule_date and schedule_date != cur_date
                         ):
-                            sch_id = item_sch.get("id")
-                            items = item_sch.get("items", [])
-                            print(f"---> EXECUTE SCHEDULE {sch_id}")
+                            continue
 
-                            slot_errors = []
+                        schedule_id = schedule_item.get("id")
+                        items = schedule_item.get("items", [])
+                        print(f"[Schedule] Executing schedule {schedule_id}")
 
-                            for item in items:
-                                slot = item.get("slot")
-                                qty = item.get("quantity", 1)
+                        required_failures = []
+                        optional_failures = []
 
-                                print(
-                                    f"[SCHEDULE] Trigger servo dispensing for slot '{slot}' x {qty} items..."
-                                )
-                                success = await self.servo.drop(slot=slot, quantity=qty)
+                        for item in items:
+                            slot = item.get("slot")
+                            quantity = item.get("quantity", 1)
+                            is_required = item.get("isRequired", True)
 
-                                if not success:
-                                    slot_errors.append({"slot": slot, "quantity": qty})
-                                await uasyncio.sleep(1.0)
+                            print(
+                                f"[Schedule] Dispensing slot '{slot}' with quantity {quantity}..."
+                            )
+                            success = await self.servo.drop(
+                                slot=slot,
+                                quantity=quantity,
+                            )
 
-                            if len(slot_errors) == 0:
-                                print(
-                                    f"[SCHEDULE] Schedule {sch_id} dispensed successfully!"
-                                )
-                                _ = await self.schedule.update_status(
-                                    str(sch_id), "completed"
-                                )
-                                _ = await self.api.post(
-                                    "/api/notifications/send",
-                                    data={
-                                        "scheduleId": str(sch_id),
-                                        "level": "info",
-                                        "title": "Schedule completed",
-                                        "body": f"Schedule {sch_id} has been completed successfully.",
-                                        "payload": {},
-                                    },
-                                )
+                            if not success:
+                                failure = {
+                                    "slot": slot,
+                                    "quantity": quantity,
+                                    "medicine": item.get("medicine"),
+                                    "dosage": item.get("dosage"),
+                                    "isRequired": is_required,
+                                }
+                                if is_required:
+                                    required_failures.append(failure)
+                                else:
+                                    optional_failures.append(failure)
 
-                            else:
-                                print(f"[SCHEDULE] Schedule {sch_id} failed!")
-                                _ = await self.schedule.update_status(
-                                    str(sch_id), "failed"
-                                )
-                                _ = await self.api.post(
-                                    "/api/notifications/send",
-                                    data={
-                                        "scheduleId": str(sch_id),
-                                        "level": "error",
-                                        "title": "Schedule failed",
-                                        "body": f"Schedule {sch_id} has failed to complete.",
-                                        "payload": {"failed_slots": slot_errors},
-                                    },
-                                )
+                            await uasyncio.sleep(1.0)
 
-            except Exception as e:  # noqa: BLE001
-                print(f"[SCHEDULE] Error: {e}")
+                        notification_payload = {
+                            "requiredFailures": required_failures,
+                            "optionalFailures": optional_failures,
+                        }
 
-            # Calculate the exact milliseconds remaining until the next second to prevent time drift
-            ms_to_next_second = 1000 - (time.ticks_ms() % 1000)
-            await uasyncio.sleep_ms(ms_to_next_second)
+                        if required_failures:
+                            print(
+                                f"[Schedule] Schedule {schedule_id} failed: {len(required_failures)} required item(s) and {len(optional_failures)} optional item(s) failed."
+                            )
+                            _ = await self.schedule.update_status(
+                                str(schedule_id), "failed"
+                            )
+                            _ = await self.api.post(
+                                "/api/notifications/send",
+                                data={
+                                    "scheduleId": str(schedule_id),
+                                    "level": "error",
+                                    "title": "Schedule failed",
+                                    "body": (
+                                        f"Schedule {schedule_id} failed because "
+                                        "one or more required items were not dispensed."
+                                    ),
+                                    "payload": notification_payload,
+                                },
+                            )
+
+                        elif optional_failures:
+                            print(
+                                f"[Schedule] Schedule {schedule_id} completed with {len(optional_failures)} optional item(s) not dispensed."
+                            )
+                            _ = await self.schedule.update_status(
+                                str(schedule_id), "completed"
+                            )
+                            _ = await self.api.post(
+                                "/api/notifications/send",
+                                data={
+                                    "scheduleId": str(schedule_id),
+                                    "level": "warning",
+                                    "title": "Schedule completed with warnings",
+                                    "body": (
+                                        f"Schedule {schedule_id} completed, "
+                                        "but some optional items were not dispensed."
+                                    ),
+                                    "payload": {"optionalFailures": optional_failures},
+                                },
+                            )
+
+                        else:
+                            print(
+                                f"[Schedule] Schedule {schedule_id} dispensed successfully."
+                            )
+                            _ = await self.schedule.update_status(
+                                str(schedule_id), "completed"
+                            )
+                            _ = await self.api.post(
+                                "/api/notifications/send",
+                                data={
+                                    "scheduleId": str(schedule_id),
+                                    "level": "info",
+                                    "title": "Schedule completed",
+                                    "body": (
+                                        f"Schedule {schedule_id} was completed "
+                                        "successfully."
+                                    ),
+                                    "payload": {},
+                                },
+                            )
+
+            except Exception as error:  # noqa: BLE001
+                print(f"[Schedule] Error: {error}")
+
+            # Sleep until the next second to reduce polling drift.
+            milliseconds_to_next_second = 1000 - (time.ticks_ms() % 1000)
+            await uasyncio.sleep_ms(milliseconds_to_next_second)
 
     @classmethod
     def create(cls) -> Schedules:

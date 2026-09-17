@@ -123,7 +123,7 @@ class Api:
                         reader.readline(), timeout=timeout
                     )
                 except uasyncio.TimeoutError:
-                    print("[STREAM] Reconnecting due to idle timeout...")
+                    print("[Stream] Reconnecting due to idle timeout...")
                     break
 
                 if not line_bytes:

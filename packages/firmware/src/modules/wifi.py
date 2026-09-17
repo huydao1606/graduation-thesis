@@ -17,7 +17,7 @@ class WiFi:
         self.wifi = config.get("wifi")
         self.device = config.get("device")
 
-    async def connect(self, force: bool = False) -> bool:
+    async def connect(self, force: bool = True) -> bool:
         """
         Establish an asynchronous Wi-Fi connection using loaded configurations.
 
@@ -51,11 +51,22 @@ class WiFi:
             timeout -= 1
 
         if wlan.isconnected():
-            print(f"[Setup] Connected to WiFi! IP: {wlan.ifconfig()[0]}")
+            print(f"\n[Setup] Connected to WiFi! IP: {wlan.ifconfig()[0]}")
             return True
         else:
-            print("[Setup] Failed to connect to WiFi.")
+            print("\n[Setup] Failed to connect to WiFi.")
             return False
+
+    def disconnect(self) -> None:
+        """
+        Disconnect from the current Wi-Fi network and deactivate the station interface.
+
+        :return: None
+        """
+        wlan = network.WLAN(network.STA_IF)
+        if wlan.isconnected():
+            wlan.disconnect()
+        wlan.active(False)
 
     @classmethod
     def create(cls) -> WiFi:

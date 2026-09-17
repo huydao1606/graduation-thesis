@@ -38,9 +38,9 @@ class SyncSchedule:
         is_saved = self.schedule.save_schedules(resp.get("data", []))
 
         if is_saved:
-            print(f"[SYNC] Schedules for {today} synced successfully.")
+            print(f"[SyncSchedule] Schedules for {today} synced successfully.")
         else:
-            print(f"[SYNC] Failed to save schedules for {today}.")
+            print(f"[SyncSchedule] Failed to save schedules for {today}.")
 
     async def start(self) -> None:
         """
@@ -48,7 +48,7 @@ class SyncSchedule:
 
         :return: None
         """
-        print("[STARTUP] SyncSchedule task initiated...", {"sync_time": self.sync_time})
+        print("[Startup] SyncSchedule task initiated...", {"sync_time": self.sync_time})
         last_synced_date = None
 
         sync_hour, sync_minute = map(int, self.sync_time.split(":"))
@@ -61,13 +61,13 @@ class SyncSchedule:
 
                 if current_hour >= sync_hour and last_synced_date != today_str:
                     print(
-                        f"[SYNC] It's past {sync_hour}:{sync_minute}. Starting daily schedule sync..."
+                        f"[SyncSchedule] It's past {sync_hour}:{sync_minute}. Starting daily schedule sync..."
                     )
                     await self.execute()
                     last_synced_date = today_str
 
             except Exception as e:  # noqa: BLE001
-                print(f"[SYNC] Error: {e}")
+                print(f"[SyncSchedule] Error: {e}")
 
             await uasyncio.sleep(1800)
 
