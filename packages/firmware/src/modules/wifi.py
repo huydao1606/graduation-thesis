@@ -1,7 +1,6 @@
-"""Firmware module implementation."""
+import asyncio
 
 import network
-import uasyncio
 
 from lib.config import Config
 
@@ -44,7 +43,7 @@ class WiFi:
         timeout = 30
         wlan.connect(ssid, password)
         while not wlan.isconnected() and timeout > 0:
-            await uasyncio.sleep(1)
+            await asyncio.sleep(1)
             print(".", end="")
             timeout -= 1
 
@@ -94,11 +93,11 @@ class WiFi:
 
         if wlan.isconnected():
             wlan.disconnect()
-            uasyncio.sleep_ms(200)
+            await asyncio.sleep(0.2)
 
         try:
             wlan.connect(ssid, password)
-        except Exception as e:  # noqa: BLE001
+        except Exception as e:
             print(f"[Setup] WiFi connect error: {e}")
             wlan.active(False)
             return False
@@ -113,7 +112,7 @@ class WiFi:
             if status in (1000, 1001, 1010, 201, 202):
                 break
 
-            await uasyncio.sleep_ms(500)
+            await asyncio.sleep(0.5)
 
         wlan.disconnect()
         wlan.active(False)

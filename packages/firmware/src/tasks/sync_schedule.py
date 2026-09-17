@@ -1,4 +1,4 @@
-import uasyncio
+import asyncio
 
 from lib.api import Api
 from lib.config import Config
@@ -48,7 +48,9 @@ class SyncSchedule:
 
         :return: None
         """
-        print("[Startup] SyncSchedule task initiated...", {"sync_time": self._sync_time})
+        print(
+            "[Startup] SyncSchedule task initiated...", {"sync_time": self._sync_time}
+        )
         last_synced_date = None
 
         sync_hour, sync_minute = map(int, self._sync_time.split(":"))
@@ -66,10 +68,10 @@ class SyncSchedule:
                     await self.execute()
                     last_synced_date = today_str
 
-            except Exception as e:  # noqa: BLE001
+            except Exception as e:
                 print(f"[SyncSchedule] Error: {e}")
 
-            await uasyncio.sleep(1800)
+            await asyncio.sleep(1800)
 
     @classmethod
     def create(cls):

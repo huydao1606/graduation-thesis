@@ -1,6 +1,5 @@
+import asyncio
 import time
-
-import uasyncio
 
 from lib.api import Api
 from lib.schedule import Schedule
@@ -90,7 +89,7 @@ class Schedules:
                                 else:
                                     optional_failures.append(failure)
 
-                            await uasyncio.sleep(1.0)
+                            await asyncio.sleep(1.0)
 
                         notification_payload = {
                             "requiredFailures": required_failures,
@@ -160,12 +159,12 @@ class Schedules:
                                 },
                             )
 
-            except Exception as error:  # noqa: BLE001
+            except Exception as error:
                 print(f"[Schedule] Error: {error}")
 
-            # Sleep until the next second to reduce polling drift.
-            milliseconds_to_next_second = 1000 - (time.ticks_ms() % 1000)
-            await uasyncio.sleep_ms(milliseconds_to_next_second)
+            now = time.time()
+            sleep_time = 60.0 - (now % 60)
+            await asyncio.sleep(sleep_time)
 
     @classmethod
     def create(cls) -> Schedules:

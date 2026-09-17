@@ -1,6 +1,5 @@
-"""Firmware module implementation."""
+import asyncio
 
-import uasyncio
 from machine import Pin
 
 from lib.pins import Pins
@@ -32,7 +31,7 @@ class StepperMotor:
             for i in range(4):
                 self._pins[i].value(FULL_STEP[self._step_index][i])
 
-            await uasyncio.sleep_ms(delay_ms)
+            await asyncio.sleep(delay_ms / 1000)
 
         self.off()
 

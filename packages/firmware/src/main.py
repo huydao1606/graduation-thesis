@@ -1,5 +1,6 @@
+import asyncio
+
 import ntptime
-import uasyncio
 from machine import Pin
 
 from lib.config import Config
@@ -43,7 +44,7 @@ class Bootstrap:
         try:
             print("[Config] Started. Waiting for switch to be released...")
             while self._switch.value() == 1:
-                await uasyncio.sleep_ms(100)
+                await asyncio.sleep(0.1)
         finally:
             self._ble.stop()
             print("[Config] Stopped.")
@@ -67,12 +68,12 @@ class Bootstrap:
                 ntptime.settime()
                 print("[Setup] Time synced successfully.")
                 break
-            except Exception as e:  # noqa: BLE001
+            except Exception as e:
                 retry_count += 1
                 print(
                     f"[Setup] Failed to sync time (Attempt {retry_count}/{max_retries}): {e}"
                 )
-                await uasyncio.sleep(2)
+                await asyncio.sleep(2)
 
         print("[Setup] Syncing device info...")
         _ = await self._sync_info.execute()
@@ -80,7 +81,7 @@ class Bootstrap:
         print("[Setup] Syncing schedules...")
         _ = await self._sync_schedule.execute()
 
-        gathered_tasks = uasyncio.gather(
+        gathered_tasks = asyncio.gather(
             self._sync_schedule.start(),
             self._streaming.start(),
             self._schedules.start(),
@@ -106,11 +107,11 @@ if __name__ == "__main__":
     bootstrap = Bootstrap()
 
     try:
-        uasyncio.run(bootstrap.start())
+        asyncio.run(bootstrap.start())
     except KeyboardInterrupt:
         print("[Cleanup] Program interrupted by user.")
-    except Exception as error:  # noqa: BLE001
+    except Exception as error:
         print(f"[Error] Unexpected error: {error}")
     finally:
-        uasyncio.run(bootstrap.stop())
+        asyncio.run(bootstrap.stop())
         print("[Cleanup] Program stopped.")

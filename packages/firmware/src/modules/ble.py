@@ -1,13 +1,14 @@
-import uasyncio
-import ubluetooth
-import ujson
+import asyncio
+import json
+
+import bluetooth
 
 from lib.config import Config
 from tasks.ble_handler import BLEHandler
 
-_CONFIG_SERVICE_UUID = ubluetooth.UUID("ffaa5bd2-45cd-4512-bf35-c5d4276a0c7a")
-_CHAR_RX_UUID = ubluetooth.UUID("3d8cffcb-69d3-41d3-8f9e-fafed0bcce6b")
-_CHAR_TX_UUID = ubluetooth.UUID("09cbb497-1c8a-4ad6-b196-3459c1820a1a")
+_CONFIG_SERVICE_UUID = bluetooth.UUID("ffaa5bd2-45cd-4512-bf35-c5d4276a0c7a")
+_CHAR_RX_UUID = bluetooth.UUID("3d8cffcb-69d3-41d3-8f9e-fafed0bcce6b")
+_CHAR_TX_UUID = bluetooth.UUID("09cbb497-1c8a-4ad6-b196-3459c1820a1a")
 
 
 class BLE:
@@ -23,10 +24,10 @@ class BLE:
         self._config = config.get("device", {})
 
         self._rx_buffer = bytearray()
-        self._send_lock = uasyncio.Lock()
+        self._send_lock = asyncio.Lock()
         self._handler = BLEHandler(self)
 
-        self._ble = ubluetooth.BLE()
+        self._ble = bluetooth.BLE()
         self._ble.active(True)
         _ = self._ble.irq(self._irq)
 
@@ -110,12 +111,12 @@ class BLE:
             self._conn_handle = data[0]
             self._rx_buffer = bytearray()
 
-            _ = uasyncio.create_task(self._handler.on_connect())
+            _ = asyncio.create_task(self._handler.on_connect())
         elif event == 2:  # Disconnect
             print("Device disconnected")
             self._conn_handle = None
             self._rx_buffer = bytearray()
-            _ = uasyncio.create_task(self._async_start_advertising())
+            _ = asyncio.create_task(self._async_start_advertising())
 
         elif event == 3:  # Write
             if self._handle_rx is None:
@@ -127,7 +128,7 @@ class BLE:
                 if chunk:
                     self._rx_buffer.extend(chunk)
                     if b"\n" in chunk:
-                        _ = uasyncio.create_task(self._process_buffer())
+                        _ = asyncio.create_task(self._process_buffer())
 
     async def send_code(self, action: int, status: int = 0) -> None:
         """
@@ -164,14 +165,14 @@ class BLE:
 
         async with self._send_lock:
             self._ble.gatts_write(self._handle_tx, packet_bytes)
-            await uasyncio.sleep_ms(10)
+            await asyncio.sleep(0.01)
 
             try:
                 self._ble.gatts_notify(self._conn_handle, self._handle_tx, packet_bytes)  # pyright: ignore[reportCallIssue]
             except TypeError:
                 self._ble.gatts_notify(self._conn_handle, self._handle_tx)  # pyright: ignore[reportArgumentType]
 
-            await uasyncio.sleep_ms(30)
+            await asyncio.sleep(0.03)
             print(
                 f"Sent {packet_type}: 0x{packet_bytes.hex().upper()} (Action: {action}, Status/Value: {status})"
             )
@@ -193,7 +194,7 @@ class BLE:
 
         try:
             _ = self._ble.gap_disconnect(self._conn_handle)
-        except Exception:  # noqa: BLE001, S110
+        except Exception:
             pass
 
         self._conn_handle = None
@@ -211,7 +212,7 @@ class BLE:
         if self._conn_handle is not None:
             try:
                 _ = self._ble.gap_disconnect(self._conn_handle)
-            except Exception:  # noqa: BLE001, S110
+            except Exception:
                 pass
             self._conn_handle = None
         self._ble.active(False)
@@ -222,7 +223,7 @@ class BLE:
 
         :return: None
         """
-        await uasyncio.sleep_ms(100)
+        await asyncio.sleep(0.1)
         self.start_advertising()
 
     async def _process_buffer(self) -> None:
@@ -237,7 +238,7 @@ class BLE:
         raw_str = self._rx_buffer.decode("utf-8", "ignore").strip()
 
         try:
-            data = ujson.loads(raw_str)
+            data = json.loads(raw_str)
             self._rx_buffer = bytearray()
 
             action = data.get("action")
@@ -246,7 +247,7 @@ class BLE:
             if action:
                 await self._handler.handle_command(action, payload)
 
-        except Exception:  # noqa: BLE001, S110
+        except Exception:
             pass
 
     @classmethod

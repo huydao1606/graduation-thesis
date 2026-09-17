@@ -1,4 +1,4 @@
-import ujson
+import json
 
 from lib.api import Api
 
@@ -22,14 +22,14 @@ class Schedule:
         """
         try:
             with open(self._path, "r") as f:
-                data = ujson.load(f)
+                data = json.load(f)
                 if isinstance(data, list):
                     self._schedules = data
                     return True
                 else:
                     print(f"Data in {self._path} is not a list.")
                     return False
-        except Exception as e:  # noqa: BLE001
+        except Exception as e:
             print(f"Error loading schedules from {self._path}: {e}")
             return False
 
@@ -78,9 +78,9 @@ class Schedule:
 
         try:
             with open(self._path, "w") as f:
-                ujson.dump(self._schedules, f)
+                json.dump(self._schedules, f)
             return True
-        except Exception as e:  # noqa: BLE001
+        except Exception as e:
             print(f"Error saving schedules to {self._path}: {e}")
             return False
 

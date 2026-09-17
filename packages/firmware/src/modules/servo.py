@@ -1,6 +1,6 @@
+import asyncio
 import time
 
-import uasyncio
 from machine import PWM, Pin
 
 from lib.pins import Pins
@@ -27,7 +27,7 @@ class Servo:
         duty = 0 if pulse_us == 0 else int((pulse_us / 20000) * 65535)
         servo.duty_u16(duty)
 
-    async def drop(self, slot: str, quantity: int = 1, timeout_ms: int = 3000) -> bool:
+    async def drop(self, slot: str, quantity: int = 1, timeout_sec: int = 3) -> bool:
         servo_obj = self._servo_map.get(slot)
         if not servo_obj:
             print(f"[Servo] Servo not found for slot '{slot}'")
@@ -43,7 +43,7 @@ class Servo:
             self.control(servo_obj, 1300)
 
             pill_dropped = False
-            start_time = time.ticks_ms()
+            start_time = time.time()
 
             while not pill_dropped:
                 if self._drop_detected:
@@ -52,16 +52,16 @@ class Servo:
                     break
 
                 # Check for timeout (for example, 3 seconds)
-                if time.ticks_diff(time.ticks_ms(), start_time) > timeout_ms:
+                if (time.time() - start_time) > timeout_sec:
                     print(f"[Servo] Slot {slot} Timeout while dispensing item {i + 1}!")
                     break
 
-                await uasyncio.sleep_ms(10)
+                await asyncio.sleep(0.01)
 
             # Disable the interrupt immediately after completion or timeout
             _ = self._sensor_pin.irq(handler=None)
             self.control(servo_obj, 0)
-            await uasyncio.sleep_ms(300)
+            await asyncio.sleep(0.3)
 
             # Report failure if no item was dispensed
             if not pill_dropped:

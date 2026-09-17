@@ -1,4 +1,4 @@
-import json as ujson
+import json
 
 
 class Config:
@@ -15,15 +15,15 @@ class Config:
         self._config[key] = value
         try:
             with open(self._file_path, "w") as f:
-                ujson.dump(self._config, f)
+                json.dump(self._config, f)
             return True
-        except Exception as e:  # noqa: BLE001
+        except Exception as e:
             print(f"Error saving configuration to {self._file_path}: {e}")
             return False
 
     def _load(self) -> dict:
         with open(self._file_path, "r") as f:
-            self._config = ujson.load(f)
+            self._config = json.load(f)
         return self._config
 
     @classmethod

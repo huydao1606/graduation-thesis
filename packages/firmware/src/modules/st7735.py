@@ -574,11 +574,11 @@ class ST7735:
         :return: None
         """
         self.rs.value(1)
-        time.sleep_ms(50)
+        time.sleep(0.05)
         self.rs.value(0)
-        time.sleep_ms(50)
+        time.sleep(0.05)
         self.rs.value(1)
-        time.sleep_ms(150)
+        time.sleep(0.15)
 
     def _set_window_point(self, pos: tuple[int, int]) -> None:
         """
@@ -655,10 +655,10 @@ class ST7735:
         self._reset()
 
         self._cmd(ST7735.SWRESET)
-        time.sleep_ms(150)
+        time.sleep(0.15)
 
         self._cmd(ST7735.SLPOUT)
-        time.sleep_ms(200)
+        time.sleep(0.20)
 
         self._cmd(ST7735.FRMCTR1)
         self._data(bytearray([0x01, 0x2C, 0x2D]))
@@ -698,10 +698,10 @@ class ST7735:
         self._data(bytearray([0x05]))
 
         self._cmd(ST7735.NORON)
-        time.sleep_ms(10)
+        time.sleep(0.01)
 
         self._cmd(ST7735.DISPON)
-        time.sleep_ms(100)
+        time.sleep(0.1)
 
         self.cs.value(1)
 

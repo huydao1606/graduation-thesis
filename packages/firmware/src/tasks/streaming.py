@@ -1,5 +1,6 @@
-import uasyncio
-import ujson
+import asyncio
+import json
+
 from machine import Pin
 
 from lib.api import Api
@@ -29,7 +30,7 @@ class Streaming:
             return False
 
     async def _handle_payload(self, line: str) -> None:
-        await uasyncio.sleep_ms(10)
+        await asyncio.sleep(0.1)
 
         clean_line = line.strip()
 
@@ -40,8 +41,8 @@ class Streaming:
             clean_line = clean_line[5:].strip()
 
         try:
-            data = ujson.loads(clean_line)
-        except Exception:  # noqa: BLE001
+            data = json.loads(clean_line)
+        except Exception:
             return
 
         if not isinstance(data, dict):
@@ -69,7 +70,7 @@ class Streaming:
 
         while True:
             try:
-                await uasyncio.sleep_ms(20)
+                await asyncio.sleep(0.020)
 
                 await self._api.stream(
                     endpoint="/api/devices/subscribe",
@@ -77,10 +78,10 @@ class Streaming:
                     timeout=30,
                 )
                 retry_delay = 2
-            except Exception as e:  # noqa: BLE001
+            except Exception as e:
                 print(f"[Stream] Error: {e}. Retrying in {retry_delay} seconds...")
 
-            await uasyncio.sleep(retry_delay)
+            await asyncio.sleep(retry_delay)
             retry_delay = min(retry_delay * 2, max_delay)
 
     @classmethod

@@ -17,7 +17,7 @@ dev = [
 
 [package.metadata.requires-dev]
 dev = [
-    { name = "micropython-rp2-rpi-pico2-w-stubs", specifier = ">=1.28.0.post4" },
+    { name = "micropython-rp2-rpi-pico2-w-stubs", specifier = ">=1.28.0" },
     { name = "mpremote", specifier = ">=1.29.0" },
 ]
 

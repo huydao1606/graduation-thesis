@@ -1,4 +1,4 @@
-import uasyncio
+import asyncio
 
 from lib.config import Config
 from modules.wifi import WiFi
@@ -47,7 +47,7 @@ class BLEHandler:
             if not ssid or not password:
                 return await self._ble.send_code(ACTION_CHECK_WIFI_RES, STATUS_FAIL)
 
-            _ = uasyncio.create_task(self._handle_check_wifi(ssid, password))
+            _ = asyncio.create_task(self._handle_check_wifi(ssid, password))
 
         elif action == "set_wifi":
             ssid = payload.get("ssid")
@@ -91,7 +91,7 @@ class BLEHandler:
         :return: None
         """
 
-        await uasyncio.sleep(1)
+        await asyncio.sleep(1)
         status_code = self._build_device_info_status()
         await self._ble.send_code(ACTION_SEND_DEVICE_INFO, status_code)
 
@@ -160,7 +160,7 @@ class BLEHandler:
             parts = sync_time_str.split(":")
             sync_hours = int(parts[0]) if len(parts) > 0 else 4
             sync_minutes = int(parts[1]) if len(parts) > 1 else 0
-        except Exception:  # noqa: BLE001
+        except Exception:
             sync_hours, sync_minutes = 0, 0
 
         sync_hours = max(0, min(23, sync_hours))
